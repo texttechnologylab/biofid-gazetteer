@@ -93,7 +93,7 @@ public class EvaluateWithAnnotated {
 		try {
 			boolean lastLineWasEmpty = true;
 			String input = commandLine.getOptionValue("i");
-			List<File> files = Streams.stream(Files.fileTraverser().breadthFirst(new File(input))).filter(File::isFile).collect(Collectors.toList());
+			List<File> files = Streams.stream(Files.fileTreeTraverser().breadthFirstTraversal(new File(input))).filter(File::isFile).collect(Collectors.toList());
 			for (int fileIndex = 0; fileIndex < files.size(); fileIndex++) {
 				File file = files.get(fileIndex);
 				try {

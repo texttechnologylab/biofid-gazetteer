@@ -90,7 +90,7 @@ public class TagTaxa {
 			Stream<File> fileStream = Stream.empty();
 			for (String inputLocation : inputLocations) {
 				fileStream = Streams.concat(fileStream,
-						Streams.stream(Files.fileTraverser().breadthFirst(new File(inputLocation)))
+						Streams.stream(Files.fileTreeTraverser().breadthFirstTraversal(new File(inputLocation)))
 								.filter(File::isFile));
 			}
 			File[] files = fileStream.sorted(Comparator.comparing(FileUtils::sizeOf)).toArray(File[]::new);
