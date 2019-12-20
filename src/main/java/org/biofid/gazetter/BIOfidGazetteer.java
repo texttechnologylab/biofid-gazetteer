@@ -148,8 +148,10 @@ public class BIOfidGazetteer extends SegmenterBase {
 						Token toToken = tokens.get(currOffset + taxonStartIndex + matchLength);
 						Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
 						
-						// TODO: change URI location for taxa from identifier to value?
-						taxon.setIdentifier(skipGramGazetteerModel.getUriFromSkipGram(taxonSkipGram).stream().map(URI::toString).collect(Collectors.joining(",")));
+						String uris = skipGramGazetteerModel.getUriFromSkipGram(taxonSkipGram).stream()
+								.map(URI::toString)
+								.collect(Collectors.joining(","));
+						taxon.setValue(uris);
 						aJCas.addFsToIndexes(taxon);
 						atomicTaxonMatchCount.incrementAndGet();
 					}

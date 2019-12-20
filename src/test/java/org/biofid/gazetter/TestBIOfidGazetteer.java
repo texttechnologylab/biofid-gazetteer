@@ -9,7 +9,7 @@ import org.apache.uima.fit.pipeline.SimplePipeline;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.util.CasIOUtils;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.texttechnologylab.annotation.type.Taxon;
 import org.xml.sax.SAXException;
 
