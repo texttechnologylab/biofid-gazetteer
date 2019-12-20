@@ -5,16 +5,17 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
 import com.google.common.io.Files;
 import org.apache.commons.collections4.SetUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Combinations;
 import org.apache.commons.math3.util.Pair;
 import org.apache.uima.util.UriUtils;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -22,6 +23,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public class SkipGramGazetteerModel {
 	
@@ -64,20 +67,31 @@ public class SkipGramGazetteerModel {
 	public SkipGramGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen) throws IOException {
 		getAllSkips = bAllSkips;
 		splitHyphen = bSplitHyphen;
-		System.out.printf("%s: Loading taxa from %d files..\n", this.getClass().getSimpleName(), aSourceLocations.length);
+		
+		// If zipped extract taxa files to temp folder
+		ArrayList<String> sourceLocations = new ArrayList<>();
+		for (String sourceLocation : aSourceLocations) {
+			if (sourceLocation.endsWith(".zip")) {
+				sourceLocations.addAll(extractTaxaFiles(sourceLocation));
+			} else {
+				sourceLocations.add(sourceLocation);
+			}
+		}
+		
+		System.out.printf("%s: Loading taxa from %d files..\n", this.getClass().getSimpleName(), sourceLocations.size());
 		long startTime = System.currentTimeMillis();
 		AtomicInteger duplicateKeys = new AtomicInteger(0);
 		
 		// Map: Taxon -> {URI}
 		taxonUriMap = new LinkedHashMap<>();
-		for (String sourceLocation : aSourceLocations) {
+		for (String sourceLocation : sourceLocations) {
 			SkipGramGazetteerModel.loadTaxaMap(sourceLocation, bUseLowercase, sLanguage).forEach((taxon, uri) ->
 					taxonUriMap.merge(taxon, uri, (uUri, vUri) -> {
 						duplicateKeys.incrementAndGet();
 						return new HashSet<>(SetUtils.union(uUri, vUri));
 					}));
 		}
-		System.out.printf("%s: Loaded %d taxa from %d files.\n", this.getClass().getSimpleName(), taxonUriMap.size(), aSourceLocations.length);
+		System.out.printf("%s: Loaded %d taxa from %d files.\n", this.getClass().getSimpleName(), taxonUriMap.size(), sourceLocations.size());
 		if (duplicateKeys.get() > 0)
 			System.err.printf("%s: Merged %d duplicate taxa!\n", this.getClass().getSimpleName(), duplicateKeys.get());
 		duplicateKeys.set(0);
@@ -157,6 +171,29 @@ public class SkipGramGazetteerModel {
 							LinkedHashMap::new)
 					);
 		}
+	}
+	
+	@NotNull
+	private static ArrayList<String> extractTaxaFiles(String sourceLocation) throws IOException {
+		System.out.println(String.format("SkipGramGazetteerModel: Extracting taxa files from %s..", sourceLocation));
+		File gazetteerFolder = Paths.get("/tmp/biofid-gazetteer/").toFile();
+		gazetteerFolder.mkdirs();
+		ArrayList<String> extractedFiles = new ArrayList<>();
+		try (ZipFile zipFile = new ZipFile(sourceLocation)) {
+			Enumeration<? extends ZipEntry> entries = zipFile.entries();
+			while (entries.hasMoreElements()) {
+				ZipEntry entry = entries.nextElement();
+				File entryDestination = new File(gazetteerFolder, entry.getName());
+				extractedFiles.add(entryDestination.toString());
+				InputStream in = zipFile.getInputStream(entry);
+				OutputStream out = new FileOutputStream(entryDestination);
+				IOUtils.copy(in, out);
+				IOUtils.closeQuietly(in);
+				out.close();
+			}
+		}
+		System.out.println(String.format("SkipGramGazetteerModel: Extracted %d taxa files to /tmp/biofid-gazetteer/.", extractedFiles.size()));
+		return extractedFiles;
 	}
 	
 	/**
