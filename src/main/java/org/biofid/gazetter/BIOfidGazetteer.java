@@ -39,7 +39,7 @@ public class BIOfidGazetteer extends SegmenterBase {
 	 * Location from which the taxon data is read.
 	 */
 	public static final String PARAM_SOURCE_LOCATION = ComponentParameters.PARAM_SOURCE_LOCATION;
-	@ConfigurationParameter(name = PARAM_SOURCE_LOCATION, mandatory = false)
+	@ConfigurationParameter(name = PARAM_SOURCE_LOCATION, mandatory = false, defaultValue = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip")
 	protected String[] sourceLocation;
 	
 	/**

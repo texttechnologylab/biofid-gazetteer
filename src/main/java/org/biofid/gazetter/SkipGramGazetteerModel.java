@@ -11,9 +11,12 @@ import org.apache.commons.math3.util.Combinations;
 import org.apache.commons.math3.util.Pair;
 import org.apache.uima.util.UriUtils;
 import org.jetbrains.annotations.NotNull;
+import org.texttechnologylab.utilities.helper.FileUtils;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.*;
@@ -29,6 +32,7 @@ import java.util.zip.ZipFile;
 public class SkipGramGazetteerModel {
 	
 	private static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
+	private static final String tempPath = "/tmp/biofid-gazetteer/";
 	private LinkedHashSet<String> skipGramSet;
 	private LinkedHashMap<String, HashSet<URI>> taxonUriMap;
 	private LinkedHashMap<String, String> skipGramTaxonLookup;
@@ -68,9 +72,18 @@ public class SkipGramGazetteerModel {
 		getAllSkips = bAllSkips;
 		splitHyphen = bSplitHyphen;
 		
-		// If zipped extract taxa files to temp folder
 		ArrayList<String> sourceLocations = new ArrayList<>();
 		for (String sourceLocation : aSourceLocations) {
+			// If sourceLocation is a valid URL, download the given file
+			try {
+				URL url = new URL(sourceLocation);
+				System.out.println(String.format("%s: Downloading '%s' to '%s'..", this.getClass().getSimpleName(), sourceLocation, tempPath));
+				sourceLocation = FileUtils.downloadFile(tempPath, url.toString(), false).toString();
+				System.out.println(String.format("%s: Finished download of '%s'.", this.getClass().getSimpleName(), sourceLocation));
+			} catch (MalformedURLException ignored) {
+			}
+			
+			// If zipped extract taxa files to temp folder
 			if (sourceLocation.endsWith(".zip")) {
 				sourceLocations.addAll(extractTaxaFiles(sourceLocation));
 			} else {
@@ -175,8 +188,8 @@ public class SkipGramGazetteerModel {
 	
 	@NotNull
 	private static ArrayList<String> extractTaxaFiles(String sourceLocation) throws IOException {
-		System.out.println(String.format("SkipGramGazetteerModel: Extracting taxa files from %s..", sourceLocation));
-		File gazetteerFolder = Paths.get("/tmp/biofid-gazetteer/").toFile();
+		System.out.println(String.format("%s: Extracting taxa files from '%s'..", SkipGramGazetteerModel.class.getSimpleName(), sourceLocation));
+		File gazetteerFolder = Paths.get(tempPath).toFile();
 		gazetteerFolder.mkdirs();
 		ArrayList<String> extractedFiles = new ArrayList<>();
 		try (ZipFile zipFile = new ZipFile(sourceLocation)) {
@@ -192,7 +205,7 @@ public class SkipGramGazetteerModel {
 				out.close();
 			}
 		}
-		System.out.println(String.format("SkipGramGazetteerModel: Extracted %d taxa files to /tmp/biofid-gazetteer/.", extractedFiles.size()));
+		System.out.println(String.format("%s: Extracted %d taxa files to '/tmp/biofid-gazetteer/'.", SkipGramGazetteerModel.class.getSimpleName(), extractedFiles.size()));
 		return extractedFiles;
 	}
 	

@@ -24,6 +24,7 @@ public class TestBIOfidGazetteer {
 	public void testGazetteer() {
 		try {
 			String sourceLocation = "src/test/resources/taxa.zip";
+//			String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(BIOfidGazetteer.class,
 					BIOfidGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
 					BIOfidGazetteer.PARAM_USE_LOWERCASE, true));
