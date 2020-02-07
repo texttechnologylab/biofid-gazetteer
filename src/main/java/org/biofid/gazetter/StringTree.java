@@ -125,8 +125,8 @@ public class StringTree {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		ImmutableList<String> taxa = ImmutableList.of("Sipodotus wallacii", "Weihnachtsinselkauz", "Acacia quinquinervia", "Hypsolebias hellneri", "Querquedula natator", "Camaroptera brachyura abessinica", "Dryopteris ×shorapanensis", "pallescens", "Melanospiza bicolor", "Sylvia mystacea mystacea", "Harpactes reinwardtii mackloti", "Myiarchus tuberculifer olivascens", "Trematomus scotti", "Prinia superciliosa superciliosa", "Pseudocorys", "Dendroica castanea", "Leucosarcia melanoleuca", "Gecinus levaillanti levaillanti", "Proteromonadidae", "Eristalis fraterculus", "Rotrücken-Ameisenfänger", "castaneiceps", "Platalea pygmea", "Relicanthus daphneae", "Isoetes gigantea", "Aegithalos", "Braunstirn-Regenpfeifer", "Coryphaispiza", "Robsonius thompsoni", "Myiophobus roraimae sadiecoatsae", "Wald");
-		ImmutableList<String> uriList = ImmutableList.of("https://www.biofid.de/bio-ontologies/Aves#GBIF_2487491", "https://www.biofid.de/bio-ontologies/Aves#GBIF_2497815", "http://www.wikidata.org/entity/Q15288576", "http://www.wikidata.org/entity/Q20745403", "https://www.biofid.de/bio-ontologies/Aves#GBIF_9747558", "https://www.biofid.de/bio-ontologies/Aves#GBIF_6087949", "http://www.wikidata.org/entity/Q17181734", "https://www.biofid.de/bio-ontologies/Aves#GBIF_9060390", "https://www.biofid.de/bio-ontologies/Aves#GBIF_9426540", "https://www.biofid.de/bio-ontologies/Aves#GBIF_7342045", "https://www.biofid.de/bio-ontologies/Aves#GBIF_5232066", "https://www.biofid.de/bio-ontologies/Aves#GBIF_6174445", "http://www.wikidata.org/entity/Q2286619", "https://www.biofid.de/bio-ontologies/Aves#GBIF_8753029", "https://www.biofid.de/bio-ontologies/Aves#GBIF_4848593", "https://www.biofid.de/bio-ontologies/Aves#GBIF_2489903", "https://www.biofid.de/bio-ontologies/Aves#GBIF_2495910", "https://www.biofid.de/bio-ontologies/Aves#GBIF_8906002", "http://www.wikidata.org/entity/Q7251573", "http://www.wikidata.org/entity/Q14521285", "https://www.biofid.de/bio-ontologies/Aves#GBIF_2490017", "https://www.biofid.de/bio-ontologies/Aves#GBIF_7585017", "https://www.biofid.de/bio-ontologies/Aves#GBIF_8731063", "http://www.wikidata.org/entity/Q2603657", "http://www.wikidata.org/entity/Q17024223", "https://www.biofid.de/bio-ontologies/Aves#GBIF_9270076", "https://www.biofid.de/bio-ontologies/Aves#GBIF_2480315", "https://www.biofid.de/bio-ontologies/Aves#GBIF_4846612", "https://www.biofid.de/bio-ontologies/Aves#GBIF_7966412", "https://www.biofid.de/bio-ontologies/Aves#GBIF_6174544", "https://www.wikidata.org/wiki/Q4421");
+		ImmutableList<String> taxa = ImmutableList.of("Wald", "Wald Lichtung");
+		ImmutableList<String> uriList = ImmutableList.of("https://www.wikidata.org/wiki/Q4421", "https://www.wikidata.org/wiki/Q4358873");
 		ArrayList<HashSet<URI>> uris = new ArrayList<>();
 		for (String string : uriList) {
 			try {
@@ -141,7 +141,7 @@ public class StringTree {
 		}
 		System.out.println(stringTree.toString());
 		
-		String query = "Der Rotrücken-Ameisenfänger läuft durch den Wald.";
+		String query = "Im Wald ist eine Lichtung. Auf der Wald Lichtung ist nichts.";
 		IndexingMap<String> lookup = new IndexingMap<>();
 		for (String taxon : taxa) {
 			lookup.add(taxon);

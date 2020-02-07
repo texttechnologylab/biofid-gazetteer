@@ -1,5 +1,7 @@
 package org.biofid.gazetter;
 
+import org.apache.logging.log4j.util.Strings;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,23 +58,35 @@ public class StringTreeNode {
 		if (this.isLeaf()) {
 			String formerSubstring = this.substring;
 			String formerTaxon = this.taxon;
-			this.substring = null;
-			this.taxon = null;
 			this.children = new HashMap<>();
 			
-			StringTreeNode child = new StringTreeNode(this, formerSubstring.substring(1), formerTaxon);
-			this.children.put(formerSubstring.charAt(0), child);
+			char key;
+			String substring;
+			if (formerSubstring.length() > 0) {
+				this.substring = null;
+				this.taxon = null;
+				key = formerSubstring.charAt(0);
+				substring = formerSubstring.substring(1);
+				StringTreeNode child = new StringTreeNode(this, substring, formerTaxon);
+				this.children.put(key, child);
+			}
 		}
 		
 		// Create new child for new taxon
-		char key = subString.length() > 0 ? subString.charAt(0) : Character.MIN_VALUE;
-		String nextSubstring = subString.length() > 0 ? subString.substring(1) : "";
-		if (this.children.containsKey(key)) {
-			this.children.get(key).insert(nextSubstring, taxon);
+		if (subString.length() > 0) {
+			char key = subString.charAt(0);
+			String nextSubstring = subString.substring(1);
+			if (this.children.containsKey(key)) {
+				this.children.get(key).insert(nextSubstring, taxon);
+			} else {
+				StringTreeNode child = new StringTreeNode(this, nextSubstring, taxon);
+				this.children.put(key, child);
+			}
 		} else {
-			StringTreeNode child = new StringTreeNode(this, nextSubstring, taxon);
-			this.children.put(key, child);
+			this.substring = "";
+			this.taxon = taxon;
 		}
+		
 	}
 	
 	public int size() {
@@ -89,14 +103,18 @@ public class StringTreeNode {
 	
 	@Override
 	public String toString() {
+		String node = "";
 		if (this.isLeaf()) {
-			return String.format("\"isLeaf\":\"True\", \"substring\":\"%s\", \"taxon\":\"%s\"", substring, taxon);
-		} else {
+			node = String.format("\"isLeaf\":\"True\", \"substring\":\"%s\", \"taxon\":\"%s\"", substring, taxon);
+		}
+		String children = "";
+		if (this.children != null) {
 			ArrayList<String> strings = new ArrayList<>();
 			for (Map.Entry<Character, StringTreeNode> entry : this.children.entrySet()) {
 				strings.add(String.format("\"%s\": {%s}", entry.getKey(), entry.getValue().toString()));
 			}
-			return "" + String.join(",\n", strings) + "";
+			children = String.join(",\n", strings) + "";
 		}
+		return node + (Strings.isNotBlank(node) && Strings.isNotBlank(children) ? ", " : "") + children;
 	}
 }
