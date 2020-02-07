@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-public class SkipGramGazetteerModel {
+class SkipGramGazetteerModel {
 	
 	static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
 	static final String tempPath = "/tmp/biofid-gazetteer/";

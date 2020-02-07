@@ -11,21 +11,21 @@ import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
+import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
  * UIMA Engine for tagging taxa from taxonomic lists or gazetteers as resource.
  */
-public class BIOfidGazetteer extends SegmenterBase {
+public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	/**
 	 * Text and model language. Default is "de".
@@ -74,7 +74,6 @@ public class BIOfidGazetteer extends SegmenterBase {
 	final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
 	SkipGramGazetteerModel skipGramGazetteerModel;
 	
-	
 	@Override
 	public void initialize(UimaContext aContext) throws ResourceInitializationException {
 		super.initialize(aContext);
@@ -84,7 +83,7 @@ public class BIOfidGazetteer extends SegmenterBase {
 		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, "de");
 		
 		try {
-			skipGramGazetteerModel = new SkipGramGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+			skipGramGazetteerModel = new TreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -102,9 +101,7 @@ public class BIOfidGazetteer extends SegmenterBase {
 		atomicTaxonMatchCount.set(0);
 		ArrayList<Token> tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
 		
-		skipGramGazetteerModel.stream()
-				.parallel()
-				.forEach(taxonSkipGram -> tagAllMatches(aJCas, tokens, taxonSkipGram));
+		tagAllMatches(aJCas, tokens);
 	}
 	
 	/**
@@ -112,59 +109,58 @@ public class BIOfidGazetteer extends SegmenterBase {
 	 *
 	 * @param aJCas
 	 * @param tokens
-	 * @param taxonSkipGram
 	 */
-	private void tagAllMatches(JCas aJCas, final ArrayList<Token> tokens, String taxonSkipGram) {
-		final String[] skipGramSplit = taxonSkipGram.split(" ");
+	private void tagAllMatches(JCas aJCas, final ArrayList<Token> tokens) {
+		HashMap<Integer, Integer> tokenBeginIndex = new HashMap<>();
+		HashMap<Integer, Integer> tokenEndIndex = new HashMap<>();
+		for (int i = 0; i < tokens.size(); i++) {
+			Token token = tokens.get(i);
+			tokenBeginIndex.put(token.getBegin(), i);
+			tokenEndIndex.put(token.getEnd(), i);
+		}
 		
-		final ArrayList<String> tokenCoveredText = tokens.stream()
-				.map(Token::getCoveredText)
-				.map(s -> pUseLowercase ? s.toLowerCase(Locale.forLanguageTag(language)) : s)
-				.collect(Collectors.toCollection(ArrayList::new));
-		
-		List<String> tokenSubList = tokenCoveredText.subList(0, tokenCoveredText.size());
-		
-		int taxonStartIndex;
-		int currOffset = 0;
+		String query = aJCas.getDocumentText();
+		query = pUseLowercase ? query.toLowerCase() : query;
+		StringTree stringTree = ((TreeGazetteerModel) skipGramGazetteerModel).stringTree;
+		int offset = 0;
+		int pos = 0;
+		StringTreeNode node = stringTree.root;
 		do {
-			taxonStartIndex = tokenSubList.indexOf(skipGramSplit[0]);
-			if (taxonStartIndex > -1) {
-				try {
-					// This boolean stays true, if all tokens from the taxon can be matched to a sub list
-					boolean fullMatch = true;
-					int matchLength = 0;
-					if (skipGramSplit.length > 1) {
-						for (int i = 1; i < skipGramSplit.length; i++) {
-							if (taxonStartIndex + i >= tokenSubList.size())
-								break;
-							fullMatch &= tokenSubList.get(taxonStartIndex + i).equals(skipGramSplit[i]);
-							matchLength = i;
-						}
-					}
+			String substring = query.substring(offset);
+			char c = substring.charAt(pos);
+			node = node.children.get(c);
+			if (node == null) {
+				offset++;
+				pos = 0;
+				node = stringTree.root;
+			} else if (node.isLeaf()) {
+				pos++;
+				boolean b = substring.substring(pos).startsWith(node.substring);
+				if (b) {
+					int fullLength = pos + node.substring.length();
+//					System.out.println(String.format("\"%s':{\"start\": %d, \"end\": %d, \"match_length\": %d, \"full_length\":%d, \"taxon\":\"%s\"}",
+//							query.subSequence(offset, offset + fullLength), offset, offset + fullLength, pos, fullLength, node.taxon));
 					
-					if (fullMatch) {
-						Token fromToken = tokens.get(currOffset + taxonStartIndex);
-						Token toToken = tokens.get(currOffset + taxonStartIndex + matchLength);
-						Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
-						
-						String uris = skipGramGazetteerModel.getUriFromSkipGram(taxonSkipGram).stream()
-								.map(URI::toString)
-								.collect(Collectors.joining(","));
-						taxon.setValue(uris);
-						aJCas.addFsToIndexes(taxon);
-						atomicTaxonMatchCount.incrementAndGet();
-					}
+					Token fromToken = tokens.get(tokenBeginIndex.get(offset));
+					Token toToken = tokens.get(tokenBeginIndex.get(offset + fullLength));
+					Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
 					
-					currOffset += taxonStartIndex + matchLength + 1;
-					if (matchLength >= tokenSubList.size() || currOffset >= tokens.size())
-						break;
+					String uris = skipGramGazetteerModel.taxonUriMap.get(node.taxon).stream()
+							.map(URI::toString)
+							.collect(Collectors.joining(","));
+//					taxon.setValue(uris);
+					aJCas.addFsToIndexes(taxon);
 					
-					tokenSubList = tokenCoveredText.subList(currOffset, tokens.size());
-				} catch (IndexOutOfBoundsException e) {
-					throw e; // FIXME
+					offset += pos;
+				} else {
+					offset++;
 				}
+				pos = 0;
+				node = stringTree.root;
+			} else {
+				pos++;
 			}
-		} while (taxonStartIndex > -1);
+		} while (offset < query.length());
 	}
 	
 }
