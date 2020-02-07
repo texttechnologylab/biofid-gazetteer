@@ -10,7 +10,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Combinations;
 import org.apache.commons.math3.util.Pair;
 import org.apache.uima.util.UriUtils;
-import org.jetbrains.annotations.NotNull;
 import org.texttechnologylab.utilities.helper.FileUtils;
 
 import java.io.*;
@@ -31,14 +30,14 @@ import java.util.zip.ZipFile;
 
 public class SkipGramGazetteerModel {
 	
-	private static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
-	private static final String tempPath = "/tmp/biofid-gazetteer/";
-	private LinkedHashSet<String> skipGramSet;
-	private LinkedHashMap<String, HashSet<URI>> taxonUriMap;
-	private LinkedHashMap<String, String> skipGramTaxonLookup;
-	private HashMap<String, List<String>> taxonSkipGramMap;
-	private static boolean getAllSkips;
-	private static boolean splitHyphen;
+	static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
+	static final String tempPath = "/tmp/biofid-gazetteer/";
+	LinkedHashSet<String> skipGramSet;
+	LinkedHashMap<String, HashSet<URI>> taxonUriMap;
+	LinkedHashMap<String, String> skipGramTaxonLookup;
+	HashMap<String, List<String>> taxonSkipGramMap;
+	static boolean getAllSkips;
+	static boolean splitHyphen;
 	
 	/**
 	 * Create 1-skip-n-grams from each taxon in a file from a given list of files.
@@ -176,7 +175,7 @@ public class SkipGramGazetteerModel {
 		try (BufferedReader bufferedReader = Files.newReader(new File(sourceLocation), StandardCharsets.UTF_8)) {
 			return bufferedReader.lines()
 					.filter(s -> !Strings.isNullOrEmpty(s))
-					.map(pUseLowercase ? s -> s.toLowerCase(Locale.forLanguageTag(language)) : Function.identity())
+					.map(s -> pUseLowercase ? s.toLowerCase(Locale.forLanguageTag(language)) : s)
 					.collect(Collectors.toMap(
 							s -> nonTokenCharacterClass.matcher(s.split("\t", 2)[0]).replaceAll("").trim(),
 							s -> Arrays.stream(s.split("\t", 2)[1].split("[ ,]")).map(UriUtils::create).collect(Collectors.toCollection(HashSet::new)),
@@ -186,7 +185,6 @@ public class SkipGramGazetteerModel {
 		}
 	}
 	
-	@NotNull
 	private static ArrayList<String> extractTaxaFiles(String sourceLocation) throws IOException {
 		System.out.println(String.format("%s: Extracting taxa files from '%s'..", SkipGramGazetteerModel.class.getSimpleName(), sourceLocation));
 		File gazetteerFolder = Paths.get(tempPath).toFile();

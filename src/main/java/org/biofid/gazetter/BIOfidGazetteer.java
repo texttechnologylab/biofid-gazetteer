@@ -120,7 +120,7 @@ public class BIOfidGazetteer extends SegmenterBase {
 		
 		final ArrayList<String> tokenCoveredText = tokens.stream()
 				.map(Token::getCoveredText)
-				.map(pUseLowercase ? s -> s.toLowerCase(Locale.forLanguageTag(language)) : Function.identity())
+				.map(s -> pUseLowercase ? s.toLowerCase(Locale.forLanguageTag(language)) : s)
 				.collect(Collectors.toCollection(ArrayList::new));
 		
 		List<String> tokenSubList = tokenCoveredText.subList(0, tokenCoveredText.size());
