@@ -1,40 +1,17 @@
 package org.biofid.gazetter.run;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Streams;
-import com.google.common.io.Files;
+import de.tudarmstadt.ukp.dkpro.core.io.xmi.XmiReader;
+import de.tudarmstadt.ukp.dkpro.core.io.xmi.XmiWriter;
 import org.apache.commons.cli.*;
-import org.apache.commons.io.FileUtils;
 import org.apache.uima.UIMAException;
-import org.apache.uima.UIMARuntimeException;
-import org.apache.uima.analysis_engine.AnalysisEngine;
-import org.apache.uima.cas.impl.XmiCasSerializer;
+import org.apache.uima.collection.CollectionReader;
+import org.apache.uima.fit.factory.AggregateBuilder;
 import org.apache.uima.fit.factory.AnalysisEngineFactory;
-import org.apache.uima.fit.factory.JCasFactory;
+import org.apache.uima.fit.factory.CollectionReaderFactory;
 import org.apache.uima.fit.pipeline.SimplePipeline;
-import org.apache.uima.jcas.JCas;
-import org.apache.uima.resource.ResourceInitializationException;
-import org.apache.uima.util.CasIOUtils;
-import org.biofid.gazetter.BIOfidGazetteer;
-import org.xml.sax.SAXException;
+import org.biofid.gazetter.BIOfidTreeGazetteer;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
-
-import static org.apache.commons.math3.util.FastMath.log10;
 
 /**
  * Created on 18.04.2019.
@@ -42,8 +19,7 @@ import static org.apache.commons.math3.util.FastMath.log10;
 public class TagTaxa {
 	public static void main(String[] args) {
 		
-		Option inputOption = new Option("i", "input", true, "Input root paths.");
-		inputOption.setArgs(Option.UNLIMITED_VALUES);
+		Option inputOption = new Option("i", "input", true, "Input root path.");
 		
 		Option outputOption = new Option("o", "output", true, "Output path.");
 		
@@ -71,55 +47,70 @@ public class TagTaxa {
 				return;
 			}
 			
-			ArrayList<String> inputLocations = Lists.newArrayList(cmd.getOptionValues("i"));
+			String inputLocation = cmd.getOptionValue("i");
 			String[] taxaLocations = cmd.getOptionValues("t");
 			String outputLocation = cmd.getOptionValue("o");
 			Boolean useLowerCase = cmd.hasOption("l");
 			Boolean getAllSkips = cmd.hasOption("s");
 			Integer minLength = cmd.hasOption("m") ? Integer.valueOf(cmd.getOptionValue("m")) : 5;
 			
-			final AnalysisEngine analysisEngine = AnalysisEngineFactory.createEngine(
-					AnalysisEngineFactory.createEngineDescription(BIOfidGazetteer.class,
-							BIOfidGazetteer.PARAM_SOURCE_LOCATION, taxaLocations,
-							BIOfidGazetteer.PARAM_USE_LOWERCASE, useLowerCase,
-							BIOfidGazetteer.PARAM_MIN_LENGTH, minLength,
-							BIOfidGazetteer.PARAM_GET_ALL_SKIPS, getAllSkips)
+			CollectionReader collection = CollectionReaderFactory.createReader(
+					XmiReader.class,
+					XmiReader.PARAM_PATTERNS, "[+]*.xmi",
+					XmiReader.PARAM_SOURCE_LOCATION, inputLocation,
+					XmiReader.PARAM_LENIENT, true
+//						, XmiReader.PARAM_LOG_FREQ, -1
 			);
 			
-			AtomicInteger count = new AtomicInteger(0);
-			Stream<File> fileStream = Stream.empty();
-			for (String inputLocation : inputLocations) {
-				fileStream = Streams.concat(fileStream,
-						Streams.stream(Files.fileTraverser().breadthFirst(new File(inputLocation)))
-								.filter(File::isFile));
-			}
-			File[] files = fileStream.sorted(Comparator.comparing(FileUtils::sizeOf)).toArray(File[]::new);
-			int allCount = files.length;
-			for (File file : files) {
-				// TODO: does this work?
-				Path outFilePath = Paths.get(outputLocation, file.getName());
-				try (FileLock fileLock = FileChannel.open(outFilePath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW).tryLock()) {
-					if (fileLock == null || !fileLock.isValid()) {
-						System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-						continue;
-					}
-					
-					System.out.printf("\rRunning file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-					JCas jCas = JCasFactory.createJCas();
-					CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath().toAbsolutePath()), null, jCas.getCas(), true);
-					
-					SimplePipeline.runPipeline(jCas, analysisEngine);
-					XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(outFilePath.toFile()));
-				} catch (FileAlreadyExistsException | OverlappingFileLockException | ClosedChannelException e) {
-					System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-				} catch (UIMAException | UIMARuntimeException | SAXException | IOException | StringIndexOutOfBoundsException e) {
-					System.err.printf("\rAn error occurred while writing to '%s', deleting file..\n", outFilePath.toString());
-					outFilePath.toFile().delete();
-					e.printStackTrace();
-				}
-			}
+			AggregateBuilder ab = new AggregateBuilder();
+			ab.add(AnalysisEngineFactory.createEngineDescription(
+					AnalysisEngineFactory.createEngineDescription(BIOfidTreeGazetteer.class,
+							BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, taxaLocations,
+							BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, useLowerCase,
+							BIOfidTreeGazetteer.PARAM_MIN_LENGTH, minLength,
+							BIOfidTreeGazetteer.PARAM_GET_ALL_SKIPS, getAllSkips)
+			));
+			ab.add(AnalysisEngineFactory.createEngineDescription(XmiWriter.class,
+					XmiWriter.PARAM_TARGET_LOCATION, outputLocation,
+					XmiWriter.PARAM_OVERWRITE, true
+			));
+			
+			SimplePipeline.runPipeline(collection, ab.createAggregate());
+
+//			AtomicInteger count = new AtomicInteger(0);
+//			Stream<File> fileStream = Stream.empty();
+//			for (String inputLocation : inputLocations) {
+//				fileStream = Streams.concat(fileStream,
+//						Streams.stream(Files.fileTraverser().breadthFirst(new File(inputLocation)))
+//								.filter(File::isFile));
+//			}
+//			File[] files = fileStream.sorted(Comparator.comparing(FileUtils::sizeOf)).toArray(File[]::new);
+//			int allCount = files.length;
+//			for (File file : files) {
+//				// TODO: does this work?
+//				Path outFilePath = Paths.get(outputLocation, file.getName());
+//				try (FileLock fileLock = FileChannel.open(outFilePath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW).tryLock()) {
+//					if (fileLock == null || !fileLock.isValid()) {
+//						System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
+//						continue;
+//					}
+//
+//					System.out.printf("\rRunning file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
+//					JCas jCas = JCasFactory.createJCas();
+//					CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath().toAbsolutePath()), null, jCas.getCas(), true);
+//
+//					SimplePipeline.runPipeline(jCas, analysisEngine);
+//					XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(outFilePath.toFile()));
+//				} catch (FileAlreadyExistsException | OverlappingFileLockException | ClosedChannelException e) {
+//					System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
+//				} catch (UIMAException | UIMARuntimeException | SAXException | IOException | StringIndexOutOfBoundsException e) {
+//					System.err.printf("\rAn error occurred while writing to '%s', deleting file..\n", outFilePath.toString());
+//					outFilePath.toFile().delete();
+//					e.printStackTrace();
+//				}
+//			}
 			System.out.println("\nDone.");
-		} catch (ParseException | ResourceInitializationException e) {
+		} catch (ParseException | UIMAException | IOException e) {
 			e.printStackTrace();
 		}
 	}

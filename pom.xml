@@ -17,11 +17,11 @@
             <artifactId>commons-cli</artifactId>
             <version>1.4</version>
         </dependency>
-        <dependency>
-            <groupId>com.github.texttechnologylab</groupId>
-            <artifactId>textimager-uima</artifactId>
-            <version>master-SNAPSHOT</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.github.texttechnologylab</groupId>-->
+<!--            <artifactId>textimager-uima</artifactId>-->
+<!--            <version>master-SNAPSHOT</version>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>com.github.texttechnologylab</groupId>
