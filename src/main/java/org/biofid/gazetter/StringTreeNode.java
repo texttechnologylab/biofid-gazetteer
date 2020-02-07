@@ -49,13 +49,17 @@ public class StringTreeNode {
 		this.taxon = taxon;
 	}
 	
-	public boolean isLeaf() {
+	public boolean hasValue() {
 		return this.taxon != null;
+	}
+	
+	public boolean isLeaf() {
+		return this.children == null;
 	}
 	
 	public void insert(String subString, final String taxon) {
 		// Create new child node for former leaf
-		if (this.isLeaf()) {
+		if (this.hasValue()) {
 			String formerSubstring = this.substring;
 			String formerTaxon = this.taxon;
 			this.children = new HashMap<>();
@@ -90,13 +94,13 @@ public class StringTreeNode {
 	}
 	
 	public int size() {
-		if (this.isLeaf())
+		if (this.hasValue())
 			return 1;
 		return 1 + this.children.values().stream().mapToInt(StringTreeNode::size).sum();
 	}
 	
 	public int leafs() {
-		if (this.isLeaf())
+		if (this.hasValue())
 			return 1;
 		return this.children.values().stream().mapToInt(StringTreeNode::leafs).sum();
 	}
@@ -104,7 +108,7 @@ public class StringTreeNode {
 	@Override
 	public String toString() {
 		String node = "";
-		if (this.isLeaf()) {
+		if (this.hasValue()) {
 			node = String.format("\"isLeaf\":\"True\", \"substring\":\"%s\", \"taxon\":\"%s\"", substring, taxon);
 		}
 		String children = "";

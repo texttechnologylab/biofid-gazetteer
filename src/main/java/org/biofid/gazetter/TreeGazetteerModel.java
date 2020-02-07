@@ -26,7 +26,7 @@ public class TreeGazetteerModel extends SkipGramGazetteerModel {
 		
 		System.out.printf("%s: Building tree..\n", this.getClass().getSimpleName());
 		
-		stringTree = new StringTree(this.skipGramSet);
+		stringTree = new StringTree(bUseLowercase);
 		for (String skipGram : skipGramSet) {
 			String taxon = skipGramTaxonLookup.get(skipGram);
 			stringTree.insert(skipGram, taxon);

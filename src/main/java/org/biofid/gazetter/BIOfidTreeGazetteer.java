@@ -11,7 +11,6 @@ import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
-import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.texttechnologylab.annotation.type.Taxon;
 
@@ -73,6 +72,9 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
 	SkipGramGazetteerModel skipGramGazetteerModel;
+	private ArrayList<Token> tokens;
+	private HashMap<Integer, Integer> tokenBeginIndex;
+	private HashMap<Integer, Integer> tokenEndIndex;
 	
 	@Override
 	public void initialize(UimaContext aContext) throws ResourceInitializationException {
@@ -98,69 +100,96 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	protected void process(JCas aJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
 		namedEntityMappingProvider.configure(aJCas.getCas());
 		
-		atomicTaxonMatchCount.set(0);
-		ArrayList<Token> tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
+		if (aJCas.getDocumentText().trim().length() == 0)
+			return;
 		
-		tagAllMatches(aJCas, tokens);
-	}
-	
-	/**
-	 * Find and tag all occurrences of the given taxon skip gram in the
-	 *
-	 * @param aJCas
-	 * @param tokens
-	 */
-	private void tagAllMatches(JCas aJCas, final ArrayList<Token> tokens) {
-		HashMap<Integer, Integer> tokenBeginIndex = new HashMap<>();
-		HashMap<Integer, Integer> tokenEndIndex = new HashMap<>();
+		tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
+		tokenBeginIndex = new HashMap<>();
+		tokenEndIndex = new HashMap<>();
 		for (int i = 0; i < tokens.size(); i++) {
 			Token token = tokens.get(i);
 			tokenBeginIndex.put(token.getBegin(), i);
 			tokenEndIndex.put(token.getEnd(), i);
 		}
 		
+		tagAllMatches(aJCas);
+	}
+	
+	/**
+	 * Find and tag all occurrences of the given taxon skip gram in the
+	 *
+	 * @param aJCas
+	 */
+	private void tagAllMatches(JCas aJCas) {
 		String query = aJCas.getDocumentText();
 		query = pUseLowercase ? query.toLowerCase() : query;
 		StringTree stringTree = ((TreeGazetteerModel) skipGramGazetteerModel).stringTree;
 		int offset = 0;
 		int pos = 0;
 		StringTreeNode node = stringTree.root;
+		
+		int lastStart = 0;
+		int lastEnd = 0;
+		String lastMatch = null;
 		do {
 			String substring = query.substring(offset);
 			char c = substring.charAt(pos);
-			node = node.children.get(c);
+			boolean charTerminatesToken = tokenEndIndex.containsKey(offset + pos + 1);
+			if (node.children == null) {
+				node = null; // FIXME!
+			} else {
+				node = node.children.get(c);
+			}
 			if (node == null) {
-				offset++;
+				offset = query.indexOf(" ", offset) + 1;
 				pos = 0;
 				node = stringTree.root;
-			} else if (node.isLeaf()) {
-				pos++;
-				boolean b = substring.substring(pos).startsWith(node.substring);
-				if (b) {
-					int fullLength = pos + node.substring.length();
-//					System.out.println(String.format("\"%s':{\"start\": %d, \"end\": %d, \"match_length\": %d, \"full_length\":%d, \"taxon\":\"%s\"}",
-//							query.subSequence(offset, offset + fullLength), offset, offset + fullLength, pos, fullLength, node.taxon));
-					
-					Token fromToken = tokens.get(tokenBeginIndex.get(offset));
-					Token toToken = tokens.get(tokenBeginIndex.get(offset + fullLength));
-					Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
-					
-					String uris = skipGramGazetteerModel.taxonUriMap.get(node.taxon).stream()
-							.map(URI::toString)
-							.collect(Collectors.joining(","));
-//					taxon.setValue(uris);
-					aJCas.addFsToIndexes(taxon);
-					
-					offset += pos;
-				} else {
-					offset++;
+				if (lastMatch != null) {
+					addTaxon(aJCas, lastStart, lastEnd, lastMatch);
+					lastMatch = null;
 				}
-				pos = 0;
-				node = stringTree.root;
+			} else if (node.hasValue() && charTerminatesToken) {
+				// If the current node has a taxon value, check if it is a leaf
+				pos++;
+				int fullLength = pos + node.substring.length();
+				if (node.isLeaf()) {
+					// If it is a leaf, check for shortened tree path
+					boolean b = substring.substring(pos).startsWith(node.substring);
+					if (b) {
+						String tax = node.taxon;
+						int start = offset;
+						int end = offset + fullLength;
+						
+						addTaxon(aJCas, start, end, tax);
+						
+						offset += fullLength;
+					} else {
+						offset = query.indexOf(" ", offset) + 1;
+					}
+					pos = 0;
+					node = stringTree.root;
+				} else {
+					// If it is not a leaf, save the current match and continue searching
+					lastStart = offset;
+					lastEnd = offset + fullLength;
+					lastMatch = node.taxon;
+				}
 			} else {
 				pos++;
 			}
-		} while (offset < query.length());
+		} while (offset + pos < query.length() && offset > -1);
+	}
+	
+	private void addTaxon(JCas aJCas, int start, int end, String tax) {
+		Token fromToken = tokens.get(tokenBeginIndex.get(start));
+		Token toToken = tokens.get(tokenEndIndex.get(end));
+		Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
+		
+		String uris = skipGramGazetteerModel.taxonUriMap.get(tax).stream()
+				.map(URI::toString)
+				.collect(Collectors.joining(","));
+		taxon.setValue(uris);
+		aJCas.addFsToIndexes(taxon);
 	}
 	
 }
