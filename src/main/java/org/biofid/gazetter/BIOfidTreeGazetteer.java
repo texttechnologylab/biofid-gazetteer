@@ -181,15 +181,22 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	}
 	
 	private void addTaxon(JCas aJCas, int start, int end, String tax) {
-		Token fromToken = tokens.get(tokenBeginIndex.get(start));
-		Token toToken = tokens.get(tokenEndIndex.get(end));
-		Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
-		
-		String uris = skipGramGazetteerModel.taxonUriMap.get(tax).stream()
-				.map(URI::toString)
-				.collect(Collectors.joining(","));
-		taxon.setValue(uris);
-		aJCas.addFsToIndexes(taxon);
+		try {
+			Token fromToken = tokens.get(tokenBeginIndex.get(start));
+			Token toToken = tokens.get(tokenEndIndex.get(end));
+			Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
+			
+			String uris = skipGramGazetteerModel.taxonUriMap.get(tax).stream()
+					.map(URI::toString)
+					.collect(Collectors.joining(","));
+			taxon.setValue(uris);
+			aJCas.addFsToIndexes(taxon);
+		} catch (NullPointerException e) {
+			System.err.println(e.getMessage());
+			System.err.println(aJCas.getDocumentText().substring(start, end + 10));
+			System.err.println(tax);
+			e.printStackTrace();
+		}
 	}
 	
 }
