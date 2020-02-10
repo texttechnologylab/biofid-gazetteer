@@ -1,5 +1,6 @@
 package org.biofid.gazetter.TreeSearch;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
 import javax.annotation.Nonnull;
@@ -7,11 +8,12 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Created on 07.02.20.
- *
- * Currently only works on tokenized text!
+ * <p>
+ * Experimental, currently not performing very well.
  */
 public class StringTreeNode implements ITreeNode {
 
@@ -64,8 +66,11 @@ public class StringTreeNode implements ITreeNode {
         if (!this.children.containsKey(key)) {
             this.children.put(key, new StringTreeNode(this));
         }
-        if (index > 0)
-            this.children.get(key).insert(subString.substring(index), value);
+        if (index > 0) {
+            this.children.get(key).insert(subString.substring(index + 1), value);
+        } else {
+            this.children.get(key).insert("", value);
+        }
     }
 
     private String getKey(String subString, int index) {
@@ -95,8 +100,10 @@ public class StringTreeNode implements ITreeNode {
         return val + this.children.values().stream().mapToInt(StringTreeNode::nodesWithValue).sum();
     }
 
-    public String traverse(@Nonnull String subString) {
-        return this.traverse(subString, null);
+    public String traverse(@Nonnull String fullString) {
+        fullString = String.join(" ", fullString.split("((?<=\\p{Punct})|(?=\\p{Punct}))"));
+        fullString = String.join(" ", fullString.split("\\s+"));
+        return this.traverse(fullString, null);
     }
 
     public String traverse(@Nonnull String subString, @Nullable String lastValue) {

@@ -19,31 +19,58 @@ import java.io.IOException;
 import java.util.stream.Collectors;
 
 public class TestBIOfidGazetteer {
-	
-	@Test
-	public void testGazetteer() {
-		try {
-			String sourceLocation = "src/test/resources/taxa.zip";
+
+    @Test
+    public void testCharGazetteer() {
+        try {
+            String sourceLocation = "src/test/resources/taxa.zip";
 //			String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
-			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
-					BIOfidTreeGazetteer.class,
-					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false));
-			
-			File file = new File("src/test/resources/9031034.xmi");
-			{
-				JCas jCas = JCasFactory.createJCas();
-				CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath()), null, jCas.getCas(), true);
-				jCas.removeAllIncludingSubtypes(Taxon.type);
-				
-				SimplePipeline.runPipeline(jCas, gazetterEngine);
-				XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(new File("/tmp/temp.xmi")));
-				
-				System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
-			}
-		} catch (UIMAException | IOException | SAXException e) {
-			e.printStackTrace();
-		}
-	}
-	
+            final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
+                    BIOfidTreeGazetteer.class,
+                    BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+                    BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false));
+
+            File file = new File("src/test/resources/9031034.xmi");
+            {
+                JCas jCas = JCasFactory.createJCas();
+                CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath()), null, jCas.getCas(), true);
+                jCas.removeAllIncludingSubtypes(Taxon.type);
+
+                SimplePipeline.runPipeline(jCas, gazetterEngine);
+                XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(new File("/tmp/temp.xmi")));
+
+                System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
+            }
+        } catch (UIMAException | IOException | SAXException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void testStringGazetteer() {
+        try {
+            String sourceLocation = "src/test/resources/taxa.zip";
+//			String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
+            final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
+                    BIOfidTreeGazetteer.class,
+                    BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+                    BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false,
+                    BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true));
+
+            File file = new File("src/test/resources/9031034.xmi");
+            {
+                JCas jCas = JCasFactory.createJCas();
+                CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath()), null, jCas.getCas(), true);
+                jCas.removeAllIncludingSubtypes(Taxon.type);
+
+                SimplePipeline.runPipeline(jCas, gazetterEngine);
+                XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(new File("/tmp/temp.xmi")));
+
+                System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
+            }
+        } catch (UIMAException | IOException | SAXException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

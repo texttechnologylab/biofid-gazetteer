@@ -34,7 +34,7 @@ public class TestTree {
         }
     }
 
-//    @Test
+    @Test
     public void TestStringTree() throws IOException {
         StringTreeNode tree = new StringTreeNode();
         tree.insert("test file");
@@ -44,8 +44,9 @@ public class TestTree {
         try (FileReader reader = new FileReader(new File("src/test/resources/text.txt"))) {
             String query = String.join(" ", IOUtils.readLines(reader));
 
-            int offset = 0;
+            int offset = -1;
             do {
+                offset = offset + 1;
                 String substring = query.substring(offset);
                 String match = tree.traverse(substring);
 
@@ -54,7 +55,7 @@ public class TestTree {
                     offset += match.length();
                 }
 
-                offset = query.indexOf(" ", offset + 1) + 1;
+                offset = query.indexOf(" ", offset + 1);
             } while (offset < query.length() && offset > -1);
         }
     }

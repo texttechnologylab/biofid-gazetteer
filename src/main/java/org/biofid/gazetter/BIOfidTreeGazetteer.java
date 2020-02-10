@@ -16,6 +16,7 @@ import org.apache.uima.resource.ResourceInitializationException;
 import org.biofid.gazetter.Models.CharTreeGazetteerModel;
 import org.biofid.gazetter.Models.ITreeGazetteerModel;
 import org.biofid.gazetter.Models.SkipGramGazetteerModel;
+import org.biofid.gazetter.Models.StringTreeGazetteerModel;
 import org.biofid.gazetter.TreeSearch.ITreeNode;
 import org.texttechnologylab.annotation.type.Taxon;
 
@@ -73,6 +74,13 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
     @ConfigurationParameter(name = PARAM_SPLIT_HYPEN, mandatory = false, defaultValue = "true")
     protected static Boolean pSplitHyphen;
 
+    /**
+     * Boolean, if not false, split taxa on spaces and hyphens too.
+     */
+    public static final String PARAM_USE_STRING_TREE = "pUseStringTree";
+    @ConfigurationParameter(name = PARAM_USE_STRING_TREE, mandatory = false, defaultValue = "false")
+    protected static Boolean pUseStringTree;
+
     MappingProvider namedEntityMappingProvider;
 
     final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
@@ -90,7 +98,11 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
         namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, "de");
 
         try {
-            skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+            if (!pUseStringTree) {
+                skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+            } else {
+                skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
