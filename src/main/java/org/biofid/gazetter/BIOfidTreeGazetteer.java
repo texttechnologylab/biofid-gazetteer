@@ -133,7 +133,8 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
             String match = root.traverse(substring);
             if (!Strings.isNullOrEmpty(match)) {
                 int end = offset + match.length();
-                addTaxon(aJCas, offset, end, match);
+                if (tokenEndIndex.containsKey(end))
+                    addTaxon(aJCas, offset, end, match);
                 offset += match.length();
             }
             offset = query.indexOf(" ", offset + 1);
