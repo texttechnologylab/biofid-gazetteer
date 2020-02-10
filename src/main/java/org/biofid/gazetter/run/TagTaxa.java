@@ -77,38 +77,6 @@ public class TagTaxa {
 			
 			SimplePipeline.runPipeline(collection, ab.createAggregate());
 
-//			AtomicInteger count = new AtomicInteger(0);
-//			Stream<File> fileStream = Stream.empty();
-//			for (String inputLocation : inputLocations) {
-//				fileStream = Streams.concat(fileStream,
-//						Streams.stream(Files.fileTraverser().breadthFirst(new File(inputLocation)))
-//								.filter(File::isFile));
-//			}
-//			File[] files = fileStream.sorted(Comparator.comparing(FileUtils::sizeOf)).toArray(File[]::new);
-//			int allCount = files.length;
-//			for (File file : files) {
-//				// TODO: does this work?
-//				Path outFilePath = Paths.get(outputLocation, file.getName());
-//				try (FileLock fileLock = FileChannel.open(outFilePath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW).tryLock()) {
-//					if (fileLock == null || !fileLock.isValid()) {
-//						System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-//						continue;
-//					}
-//
-//					System.out.printf("\rRunning file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-//					JCas jCas = JCasFactory.createJCas();
-//					CasIOUtils.load(java.nio.file.Files.newInputStream(file.toPath().toAbsolutePath()), null, jCas.getCas(), true);
-//
-//					SimplePipeline.runPipeline(jCas, analysisEngine);
-//					XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(outFilePath.toFile()));
-//				} catch (FileAlreadyExistsException | OverlappingFileLockException | ClosedChannelException e) {
-//					System.out.printf("\rSkipped file %0" + (int) (log10(allCount) + 1) + "d/%d", count.incrementAndGet(), allCount);
-//				} catch (UIMAException | UIMARuntimeException | SAXException | IOException | StringIndexOutOfBoundsException e) {
-//					System.err.printf("\rAn error occurred while writing to '%s', deleting file..\n", outFilePath.toString());
-//					outFilePath.toFile().delete();
-//					e.printStackTrace();
-//				}
-//			}
 			System.out.println("\nDone.");
 		} catch (ParseException | UIMAException | IOException e) {
 			e.printStackTrace();
