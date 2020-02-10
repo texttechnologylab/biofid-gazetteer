@@ -14,6 +14,7 @@ import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.biofid.gazetter.Models.CharTreeGazetteerModel;
+import org.biofid.gazetter.Models.ITreeGazetteerModel;
 import org.biofid.gazetter.Models.SkipGramGazetteerModel;
 import org.biofid.gazetter.TreeSearch.ITreeNode;
 import org.texttechnologylab.annotation.type.Taxon;
@@ -127,7 +128,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
     private void tagAllMatches(JCas aJCas) {
         String query = aJCas.getDocumentText();
         query = pUseLowercase ? query.toLowerCase() : query;
-        ITreeNode root = ((CharTreeGazetteerModel) skipGramGazetteerModel).tree;
+        ITreeNode root = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
 
         int offset = -1;
         do {
@@ -136,6 +137,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
             String match = root.traverse(substring);
             if (!Strings.isNullOrEmpty(match)) {
                 int end = offset + match.length();
+                // FIXME: This should not be neccessary
                 if (tokenBeginIndex.containsKey(offset) && tokenEndIndex.containsKey(end))
                     addTaxon(aJCas, offset, end, match);
                 offset += match.length();

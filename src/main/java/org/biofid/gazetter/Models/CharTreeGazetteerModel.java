@@ -7,7 +7,7 @@ import org.biofid.gazetter.TreeSearch.ITreeNode;
 import java.io.IOException;
 import java.util.stream.Stream;
 
-public class CharTreeGazetteerModel extends SkipGramGazetteerModel {
+public class CharTreeGazetteerModel extends SkipGramGazetteerModel implements ITreeGazetteerModel {
 
     public final ITreeNode tree;
 
@@ -42,8 +42,12 @@ public class CharTreeGazetteerModel extends SkipGramGazetteerModel {
         );
     }
 
-    public
+    @Override
+    public ITreeNode getTree() {
+        return this.tree;
+    }
 
+    public
     @Deprecated
     Stream<String> stream() {
         throw new UnsupportedOperationException();
