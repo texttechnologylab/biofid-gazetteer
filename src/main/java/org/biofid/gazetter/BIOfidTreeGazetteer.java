@@ -13,8 +13,9 @@ import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
+import org.biofid.gazetter.Models.CharTreeGazetteerModel;
 import org.biofid.gazetter.Models.SkipGramGazetteerModel;
-import org.biofid.gazetter.TreeSearch.CharTreeNode;
+import org.biofid.gazetter.TreeSearch.ITreeNode;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;
@@ -126,7 +127,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
     private void tagAllMatches(JCas aJCas) {
         String query = aJCas.getDocumentText();
         query = pUseLowercase ? query.toLowerCase() : query;
-        CharTreeNode root = ((CharTreeGazetteerModel) skipGramGazetteerModel).tree;
+        ITreeNode root = ((CharTreeGazetteerModel) skipGramGazetteerModel).tree;
 
         int offset = -1;
         do {

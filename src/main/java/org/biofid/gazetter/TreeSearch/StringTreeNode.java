@@ -13,7 +13,7 @@ import java.util.Map;
  *
  * Currently only works on tokenized text!
  */
-public class StringTreeNode {
+public class StringTreeNode implements ITreeNode {
 
     public final StringTreeNode parent;
     public final HashMap<String, StringTreeNode> children;

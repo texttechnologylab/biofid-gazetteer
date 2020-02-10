@@ -1,6 +1,5 @@
 package org.biofid.gazetter.Models;
 
-import org.biofid.gazetter.CharTreeGazetteerModel;
 import org.biofid.gazetter.TreeSearch.StringTreeNode;
 
 import java.io.IOException;

@@ -1,14 +1,15 @@
-package org.biofid.gazetter;
+package org.biofid.gazetter.Models;
 
 import org.biofid.gazetter.Models.SkipGramGazetteerModel;
 import org.biofid.gazetter.TreeSearch.CharTreeNode;
+import org.biofid.gazetter.TreeSearch.ITreeNode;
 
 import java.io.IOException;
 import java.util.stream.Stream;
 
 public class CharTreeGazetteerModel extends SkipGramGazetteerModel {
 
-    public final CharTreeNode tree;
+    public final ITreeNode tree;
 
     /**
      * Create 1-skip-n-grams from each taxon in a file from a given list of files.
