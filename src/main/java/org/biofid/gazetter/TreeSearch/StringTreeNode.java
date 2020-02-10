@@ -7,17 +7,18 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created on 07.02.20.
- * <p>
- * Experimental, currently not performing very well.
  */
 public class StringTreeNode implements ITreeNode {
 
     public final StringTreeNode parent;
     public final ConcurrentHashMap<String, StringTreeNode> children;
     public String value;
+    private Pattern pattern = Pattern.compile("[^\\p{Alnum}-]", Pattern.UNICODE_CHARACTER_CLASS);
 
 
     /**
@@ -60,7 +61,8 @@ public class StringTreeNode implements ITreeNode {
             }
         }
 
-        int index = subString.indexOf(" ");
+        int index = getIndex(subString);
+
         String key;
         key = getKey(subString, index);
         synchronized (this.children) {
@@ -73,6 +75,34 @@ public class StringTreeNode implements ITreeNode {
         } else {
             this.children.get(key).insert("", value);
         }
+    }
+
+    public String traverse(@Nonnull String subString, @Nullable String lastValue) {
+        if (subString.length() == 0) {
+            return this.value == null ? lastValue : this.value;
+        }
+
+        int index = getIndex(subString);
+        String key = this.getKey(subString, index);
+
+        // save value if this node has one
+        if (this.value != null) {
+            lastValue = this.value;
+        }
+
+        if (this.children.containsKey(key))
+            return this.children.get(key).traverse(subString.substring(key.length() + 1), lastValue);
+        else
+            return lastValue;
+    }
+
+    private int getIndex(String subString) {
+        int index = -1;
+        Matcher matcher = pattern.matcher(subString);
+        if (matcher.find()) {
+            index = matcher.start();
+        }
+        return index;
     }
 
     private String getKey(String subString, int index) {
@@ -103,28 +133,7 @@ public class StringTreeNode implements ITreeNode {
     }
 
     public String traverse(@Nonnull String fullString) {
-        fullString = String.join(" ", fullString.split("((?<=\\p{Punct})|(?=\\p{Punct}))"));
-        fullString = String.join(" ", fullString.split("\\s+"));
         return this.traverse(fullString, null);
-    }
-
-    public String traverse(@Nonnull String subString, @Nullable String lastValue) {
-        if (subString.length() == 0) {
-            return this.value == null ? lastValue : this.value;
-        }
-
-        int index = subString.indexOf(" ");
-        String key = this.getKey(subString, index);
-
-        // save value if this node has one
-        if (this.value != null) {
-            lastValue = this.value;
-        }
-
-        if (this.children.containsKey(key))
-            return this.children.get(key).traverse(subString.substring(key.length() + 1), lastValue);
-        else
-            return lastValue;
     }
 
     @Override

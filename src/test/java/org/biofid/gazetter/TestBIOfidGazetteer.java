@@ -26,7 +26,7 @@ public class TestBIOfidGazetteer {
     //    private String sourceLocation = "src/test/resources/taxa.zip";
     private String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
 
-    @Test
+//    @Test
     public void testRegularGazetteer() {
         try {
             final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
@@ -85,7 +85,8 @@ public class TestBIOfidGazetteer {
                     XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(new File("/tmp/temp.xmi")));
                     System.out.printf("Finished tagging in %dms.\n", stopWatch.getTime(TimeUnit.MILLISECONDS));
 
-                    System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
+                    System.out.printf("Found %d taxa.\n", JCasUtil.select(jCas, Taxon.class).size());
+//                    System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
                 }
             } catch (IOException | SAXException e) {
                 e.printStackTrace();
