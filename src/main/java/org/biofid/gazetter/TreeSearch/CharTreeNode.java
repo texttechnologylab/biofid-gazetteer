@@ -5,8 +5,8 @@ import org.apache.logging.log4j.util.Strings;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created on 07.02.20.
@@ -14,7 +14,7 @@ import java.util.Map;
 public class CharTreeNode implements ITreeNode {
 
     public final CharTreeNode parent;
-    public final HashMap<Character, CharTreeNode> children;
+    public final ConcurrentHashMap<Character, CharTreeNode> children;
     public String value;
 
 
@@ -23,7 +23,7 @@ public class CharTreeNode implements ITreeNode {
      */
     public CharTreeNode() {
         this.parent = null;
-        this.children = new HashMap<>();
+        this.children = new ConcurrentHashMap<>();
         this.value = null;
     }
 
@@ -34,7 +34,7 @@ public class CharTreeNode implements ITreeNode {
      */
     public CharTreeNode(CharTreeNode parent) {
         this.parent = parent;
-        this.children = new HashMap<>();
+        this.children = new ConcurrentHashMap<>();
         this.value = null;
     }
 
@@ -56,13 +56,17 @@ public class CharTreeNode implements ITreeNode {
     @Override
     public void insert(String subString, final String value) {
         if (subString.length() == 0) {
-            this.value = value;
-            return;
+            synchronized (this.children) {
+                this.value = value;
+                return;
+            }
         }
 
         char key = subString.charAt(0);
-        if (!this.children.containsKey(key)) {
-            this.children.put(key, new CharTreeNode(this));
+        synchronized (this.children) {
+            if (!this.children.containsKey(key)) {
+                this.children.put(key, new CharTreeNode(this));
+            }
         }
         this.children.get(key).insert(subString.substring(1), value);
     }

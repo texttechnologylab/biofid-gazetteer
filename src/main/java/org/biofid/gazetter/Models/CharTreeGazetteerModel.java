@@ -1,6 +1,5 @@
 package org.biofid.gazetter.Models;
 
-import org.biofid.gazetter.Models.SkipGramGazetteerModel;
 import org.biofid.gazetter.TreeSearch.CharTreeNode;
 import org.biofid.gazetter.TreeSearch.ITreeNode;
 
@@ -31,9 +30,9 @@ public class CharTreeGazetteerModel extends SkipGramGazetteerModel implements IT
         System.out.printf("%s: Building tree..\n", this.getClass().getSimpleName());
 
         tree = new CharTreeNode();
-        for (String skipGram : skipGramSet) {
-            tree.insert(bUseLowercase ? skipGram.toLowerCase() : skipGram);
-        }
+        skipGramSet.stream()
+                .map(skipGram -> bUseLowercase ? skipGram.toLowerCase() : skipGram)
+                .forEach(tree::insert);
 
         System.out.printf(
                 "%s: Finished building tree with %d nodes from %d skip-grams in %dms.\n",

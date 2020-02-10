@@ -149,7 +149,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
             String match = root.traverse(substring);
             if (!Strings.isNullOrEmpty(match)) {
                 int end = offset + match.length();
-                // FIXME: This should not be neccessary
+                // TODO: implement parameter which allows to ignore the token end rule
                 if (tokenBeginIndex.containsKey(offset) && tokenEndIndex.containsKey(end))
                     addTaxon(aJCas, offset, end, match);
                 offset += match.length();

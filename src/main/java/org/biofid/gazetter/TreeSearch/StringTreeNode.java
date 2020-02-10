@@ -1,14 +1,12 @@
 package org.biofid.gazetter.TreeSearch;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.util.Strings;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created on 07.02.20.
@@ -18,7 +16,7 @@ import java.util.regex.Pattern;
 public class StringTreeNode implements ITreeNode {
 
     public final StringTreeNode parent;
-    public final HashMap<String, StringTreeNode> children;
+    public final ConcurrentHashMap<String, StringTreeNode> children;
     public String value;
 
 
@@ -27,7 +25,7 @@ public class StringTreeNode implements ITreeNode {
      */
     public StringTreeNode() {
         this.parent = null;
-        this.children = new HashMap<>();
+        this.children = new ConcurrentHashMap<>();
         this.value = null;
     }
 
@@ -38,7 +36,7 @@ public class StringTreeNode implements ITreeNode {
      */
     public StringTreeNode(StringTreeNode parent) {
         this.parent = parent;
-        this.children = new HashMap<>();
+        this.children = new ConcurrentHashMap<>();
         this.value = null;
     }
 
@@ -56,15 +54,19 @@ public class StringTreeNode implements ITreeNode {
 
     public void insert(String subString, final String value) {
         if (subString.length() == 0) {
-            this.value = value;
-            return;
+            synchronized (this.children) {
+                this.value = value;
+                return;
+            }
         }
 
         int index = subString.indexOf(" ");
         String key;
         key = getKey(subString, index);
-        if (!this.children.containsKey(key)) {
-            this.children.put(key, new StringTreeNode(this));
+        synchronized (this.children) {
+            if (!this.children.containsKey(key)) {
+                this.children.put(key, new StringTreeNode(this));
+            }
         }
         if (index > 0) {
             this.children.get(key).insert(subString.substring(index + 1), value);
