@@ -133,7 +133,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
             String match = root.traverse(substring);
             if (!Strings.isNullOrEmpty(match)) {
                 int end = offset + match.length();
-                if (tokenEndIndex.containsKey(end))
+                if (tokenBeginIndex.containsKey(offset) && tokenEndIndex.containsKey(end))
                     addTaxon(aJCas, offset, end, match);
                 offset += match.length();
             }
@@ -141,12 +141,13 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
         } while (offset < query.length() && offset > -1);
     }
 
-    private void addTaxon(JCas aJCas, int start, int end, String tax) {
+    private void addTaxon(JCas aJCas, int start, int end, String skipgram) {
         try {
             Token fromToken = tokens.get(tokenBeginIndex.get(start));
             Token toToken = tokens.get(tokenEndIndex.get(end));
             Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
 
+            String tax = skipGramGazetteerModel.skipGramTaxonLookup.get(skipgram);
             String uris = skipGramGazetteerModel.taxonUriMap.get(tax).stream()
                     .map(URI::toString)
                     .collect(Collectors.joining(","));
@@ -155,7 +156,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
         } catch (NullPointerException e) {
             System.err.println(e.getMessage());
             System.err.println(aJCas.getDocumentText().substring(start, end + 10));
-            System.err.println(tax);
+            System.err.println(skipgram);
             e.printStackTrace();
         }
     }

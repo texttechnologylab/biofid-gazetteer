@@ -39,7 +39,7 @@ public class TestBIOfidGazetteer {
 				SimplePipeline.runPipeline(jCas, gazetterEngine);
 				XmiCasSerializer.serialize(jCas.getCas(), new FileOutputStream(new File("/tmp/temp.xmi")));
 				
-				System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d)", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd())).collect(Collectors.joining("\n")));
+				System.out.println(JCasUtil.select(jCas, Taxon.class).stream().map(taxon -> String.format("%s@(%d, %d): %s", taxon.getCoveredText(), taxon.getBegin(), taxon.getEnd(), taxon.getValue())).collect(Collectors.joining("\n")));
 			}
 		} catch (UIMAException | IOException | SAXException e) {
 			e.printStackTrace();
