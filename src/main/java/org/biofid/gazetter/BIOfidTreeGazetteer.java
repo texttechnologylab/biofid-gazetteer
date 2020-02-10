@@ -13,6 +13,8 @@ import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
+import org.biofid.gazetter.Models.SkipGramGazetteerModel;
+import org.biofid.gazetter.TreeSearch.CharTreeNode;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;

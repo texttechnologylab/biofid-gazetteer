@@ -1,10 +1,9 @@
 package org.biofid.gazetter;
 
 import com.google.common.base.Strings;
-import opennlp.tools.tokenize.TokenizerME;
-import opennlp.tools.tokenize.TokenizerModel;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.biofid.gazetter.TreeSearch.CharTreeNode;
+import org.biofid.gazetter.TreeSearch.StringTreeNode;
 import org.junit.Test;
 
 import java.io.*;

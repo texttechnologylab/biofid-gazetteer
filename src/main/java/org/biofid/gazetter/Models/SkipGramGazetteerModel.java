@@ -1,4 +1,4 @@
-package org.biofid.gazetter;
+package org.biofid.gazetter.Models;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -28,16 +28,16 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-class SkipGramGazetteerModel {
-	
-	static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
-	static final String tempPath = "/tmp/biofid-gazetteer/";
-	LinkedHashSet<String> skipGramSet;
-	LinkedHashMap<String, HashSet<URI>> taxonUriMap;
-	LinkedHashMap<String, String> skipGramTaxonLookup;
-	HashMap<String, List<String>> taxonSkipGramMap;
-	static boolean getAllSkips;
-	static boolean splitHyphen;
+public class SkipGramGazetteerModel {
+
+	public static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
+	public static final String tempPath = "/tmp/biofid-gazetteer/";
+	public LinkedHashSet<String> skipGramSet;
+	public LinkedHashMap<String, HashSet<URI>> taxonUriMap;
+	public LinkedHashMap<String, String> skipGramTaxonLookup;
+	public HashMap<String, List<String>> taxonSkipGramMap;
+	public static boolean getAllSkips;
+	public static boolean splitHyphen;
 	
 	/**
 	 * Create 1-skip-n-grams from each taxon in a file from a given list of files.
@@ -267,7 +267,7 @@ class SkipGramGazetteerModel {
 	 *
 	 * @return A stream of strings by calling: this.skipGramSet.stream().
 	 */
-	Stream<String> stream() {
+	public Stream<String> stream() {
 		return this.skipGramSet.stream();
 	}
 }

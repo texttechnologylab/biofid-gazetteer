@@ -1,5 +1,8 @@
 package org.biofid.gazetter;
 
+import org.biofid.gazetter.Models.SkipGramGazetteerModel;
+import org.biofid.gazetter.TreeSearch.CharTreeNode;
+
 import java.io.IOException;
 import java.util.stream.Stream;
 
