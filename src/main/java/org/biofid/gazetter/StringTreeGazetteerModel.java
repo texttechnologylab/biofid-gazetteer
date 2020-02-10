@@ -3,10 +3,10 @@ package org.biofid.gazetter;
 import java.io.IOException;
 import java.util.stream.Stream;
 
-public class TreeGazetteerModel extends SkipGramGazetteerModel {
-	
-	public final StringTree stringTree;
-	
+public class StringTreeGazetteerModel extends CharTreeGazetteerModel {
+
+	public final StringTreeNode tree;
+
 	/**
 	 * Create 1-skip-n-grams from each taxon in a file from a given list of files.
 	 *
@@ -20,21 +20,18 @@ public class TreeGazetteerModel extends SkipGramGazetteerModel {
 	 * @param bSplitHyphen     If true, taxon tokens will be split at hyphens.
 	 * @throws IOException
 	 */
-	public TreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen) throws IOException {
+	public StringTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen) throws IOException {
 		super(aSourceLocations, bUseLowercase, sLanguage, dMinLength, bAllSkips, bSplitHyphen);
 		long startTime = System.currentTimeMillis();
 		
 		System.out.printf("%s: Building tree..\n", this.getClass().getSimpleName());
 		
-		stringTree = new StringTree(bUseLowercase);
-		for (String skipGram : skipGramSet) {
-			String taxon = skipGramTaxonLookup.get(skipGram);
-			stringTree.insert(skipGram, taxon);
-		}
+		tree = new StringTreeNode();
+		skipGramSet.forEach(tree::insert);
 		
 		System.out.printf(
 				"%s: Finished building tree with %d nodes from %d skip-grams in %dms.\n",
-				this.getClass().getSimpleName(), stringTree.size(), skipGramSet.size(),
+				this.getClass().getSimpleName(), tree.size(), skipGramSet.size(),
 				System.currentTimeMillis() - startTime
 		);
 	}
