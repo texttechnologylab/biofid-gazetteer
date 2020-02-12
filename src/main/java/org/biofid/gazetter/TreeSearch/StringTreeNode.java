@@ -52,7 +52,7 @@ public class StringTreeNode implements ITreeNode {
     public void insert(String value) {
         this.insert(value.trim(), value);
     }
-
+    
     public void insert(String subString, final String value) {
         if (subString.length() == 0) {
             synchronized (this.children) {
@@ -76,7 +76,11 @@ public class StringTreeNode implements ITreeNode {
             this.children.get(key).insert("", value);
         }
     }
-
+    
+    public String traverse(@Nonnull String fullString) {
+        return this.traverse(fullString, null);
+    }
+    
     public String traverse(@Nonnull String subString, @Nullable String lastValue) {
         if (subString.length() == 0) {
             return this.value == null ? lastValue : this.value;
@@ -95,7 +99,7 @@ public class StringTreeNode implements ITreeNode {
         else
             return lastValue;
     }
-
+    
     private int getIndex(String subString) {
         int index = -1;
         Matcher matcher = pattern.matcher(subString);
@@ -104,7 +108,7 @@ public class StringTreeNode implements ITreeNode {
         }
         return index;
     }
-
+    
     private String getKey(String subString, int index) {
         String key;
         if (index > 0) {
@@ -114,11 +118,11 @@ public class StringTreeNode implements ITreeNode {
         }
         return key;
     }
-
+    
     public int size() {
         return 1 + this.children.values().stream().mapToInt(StringTreeNode::size).sum();
     }
-
+    
     public int leafs() {
         if (this.children.size() == 0) {
             return 1;
@@ -130,10 +134,6 @@ public class StringTreeNode implements ITreeNode {
     public int nodesWithValue() {
         int val = this.hasValue() ? 1 : 0;
         return val + this.children.values().stream().mapToInt(StringTreeNode::nodesWithValue).sum();
-    }
-
-    public String traverse(@Nonnull String fullString) {
-        return this.traverse(fullString, null);
     }
 
     @Override

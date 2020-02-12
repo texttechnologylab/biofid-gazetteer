@@ -70,12 +70,36 @@ public class CharTreeNode implements ITreeNode {
         }
         this.children.get(key).insert(subString.substring(1), value);
     }
-
+    
+    @Override
+    public String traverse(@Nonnull String subString) {
+        return this.traverse(subString, null);
+    }
+    
+    @Override
+    public String traverse(@Nonnull String subString, @Nullable String lastValue) {
+        if (subString.length() == 0) {
+            return this.value == null ? lastValue : this.value;
+        }
+        
+        char key = subString.charAt(0);
+        
+        // save value if this node has one
+        if (this.value != null) {
+            lastValue = this.value;
+        }
+        
+        if (this.children.containsKey(key))
+            return this.children.get(key).traverse(subString.substring(1), lastValue);
+        else
+            return lastValue;
+    }
+    
     @Override
     public int size() {
         return 1 + this.children.values().stream().mapToInt(CharTreeNode::size).sum();
     }
-
+    
     @Override
     public int leafs() {
         if (this.children.size() == 0) {
@@ -89,30 +113,6 @@ public class CharTreeNode implements ITreeNode {
     public int nodesWithValue() {
         int val = this.hasValue() ? 1 : 0;
         return val + this.children.values().stream().mapToInt(CharTreeNode::nodesWithValue).sum();
-    }
-
-    @Override
-    public String traverse(@Nonnull String subString) {
-        return this.traverse(subString, null);
-    }
-
-    @Override
-    public String traverse(@Nonnull String subString, @Nullable String lastValue) {
-        if (subString.length() == 0) {
-            return this.value == null ? lastValue : this.value;
-        }
-
-        char key = subString.charAt(0);
-
-        // save value if this node has one
-        if (this.value != null) {
-            lastValue = this.value;
-        }
-
-        if (this.children.containsKey(key))
-            return this.children.get(key).traverse(subString.substring(1), lastValue);
-        else
-            return lastValue;
     }
 
     @Override
