@@ -3,7 +3,6 @@ package org.biofid.gazetter.Models;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
-import com.google.common.io.Files;
 import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -17,6 +16,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,9 +30,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class SkipGramGazetteerModel {
-
+	
 	public static Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
-	public static final String tempPath = "/tmp/biofid-gazetteer/";
+	private static final Path tempPath = Paths.get("/tmp/biofid-gazetteer/");
+	private static final Path cachePath = Paths.get(System.getenv("HOME"), ".cache/biofid-gazetteer/").toAbsolutePath();
 	public LinkedHashSet<String> skipGramSet;
 	public LinkedHashMap<String, HashSet<URI>> taxonUriMap;
 	public LinkedHashMap<String, String> skipGramTaxonLookup;
@@ -74,13 +76,7 @@ public class SkipGramGazetteerModel {
 		ArrayList<String> sourceLocations = new ArrayList<>();
 		for (String sourceLocation : aSourceLocations) {
 			// If sourceLocation is a valid URL, download the given file
-			try {
-				URL url = new URL(sourceLocation);
-				System.out.println(String.format("%s: Downloading '%s' to '%s'..", this.getClass().getSimpleName(), sourceLocation, tempPath));
-				sourceLocation = FileUtils.downloadFile(tempPath, url.toString(), false).toString();
-				System.out.println(String.format("%s: Finished download of '%s'.", this.getClass().getSimpleName(), sourceLocation));
-			} catch (MalformedURLException ignored) {
-			}
+			sourceLocation = downloadTaxaFiles(sourceLocation);
 			
 			// If zipped extract taxa files to temp folder
 			if (sourceLocation.endsWith(".zip")) {
@@ -172,7 +168,7 @@ public class SkipGramGazetteerModel {
 	 * @throws IOException if file is not found or an error occurs.
 	 */
 	private static LinkedHashMap<String, HashSet<URI>> loadTaxaMap(String sourceLocation, Boolean pUseLowercase, String language) throws IOException {
-		try (BufferedReader bufferedReader = Files.newReader(new File(sourceLocation), StandardCharsets.UTF_8)) {
+		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(sourceLocation)), StandardCharsets.UTF_8))) {
 			return bufferedReader.lines()
 					.filter(s -> !Strings.isNullOrEmpty(s))
 					.map(s -> pUseLowercase ? s.toLowerCase(Locale.forLanguageTag(language)) : s)
@@ -185,10 +181,29 @@ public class SkipGramGazetteerModel {
 		}
 	}
 	
+	/**
+	 * Attempt to download the taxa files, if the location parameter is a valid URL
+	 *
+	 * @param sourceLocation
+	 * @return
+	 * @throws IOException
+	 */
+	public String downloadTaxaFiles(String sourceLocation) throws IOException {
+		try {
+			URL url = new URL(sourceLocation);
+			String taxaLocation = getTaxaLocation().toString();
+			System.out.println(String.format("%s: Downloading '%s'..", this.getClass().getSimpleName(), sourceLocation));
+			sourceLocation = FileUtils.downloadFile(taxaLocation, url.toString(), false).toString();
+			System.out.println(String.format("%s: Finished download of '%s'.", this.getClass().getSimpleName(), sourceLocation));
+		} catch (MalformedURLException ignored) {
+		}
+		return sourceLocation;
+	}
+	
 	private static ArrayList<String> extractTaxaFiles(String sourceLocation) throws IOException {
 		System.out.println(String.format("%s: Extracting taxa files from '%s'..", SkipGramGazetteerModel.class.getSimpleName(), sourceLocation));
-		File gazetteerFolder = Paths.get(tempPath).toFile();
-		gazetteerFolder.mkdirs();
+		
+		File gazetteerFolder = getTaxaLocation().toFile();
 		ArrayList<String> extractedFiles = new ArrayList<>();
 		try (ZipFile zipFile = new ZipFile(sourceLocation)) {
 			Enumeration<? extends ZipEntry> entries = zipFile.entries();
@@ -197,14 +212,44 @@ public class SkipGramGazetteerModel {
 				File entryDestination = new File(gazetteerFolder, entry.getName());
 				extractedFiles.add(entryDestination.toString());
 				InputStream in = zipFile.getInputStream(entry);
-				OutputStream out = new FileOutputStream(entryDestination);
-				IOUtils.copy(in, out);
-				IOUtils.closeQuietly(in);
-				out.close();
+				if (!entryDestination.exists()) {
+					OutputStream out = new FileOutputStream(entryDestination);
+					IOUtils.copy(in, out);
+					out.close();
+				} else {
+					System.out.printf("File '%s' exists, skipping extraction.\n", entryDestination);
+				}
+				in.close();
 			}
 		}
-		System.out.println(String.format("%s: Extracted %d taxa files to '/tmp/biofid-gazetteer/'.", SkipGramGazetteerModel.class.getSimpleName(), extractedFiles.size()));
+		System.out.println(String.format("%s: Extracted %d taxa files to '%s'.", SkipGramGazetteerModel.class.getSimpleName(), extractedFiles.size(), sourceLocation));
 		return extractedFiles;
+	}
+	
+	/**
+	 * Check the possible paths for automatic download and extraction for read/write access
+	 * and create folders if necessary.
+	 *
+	 * @return A valid writable Path.
+	 * @throws IOException If neither {@link SkipGramGazetteerModel#cachePath cachePath} nor
+	 *                     {@link SkipGramGazetteerModel#tempPath tempPath} are writable.
+	 */
+	private static Path getTaxaLocation() throws IOException {
+		Path gazetteerFolder;
+		if (cachePath.toFile().mkdirs() || (Files.isReadable(cachePath) && Files.isWritable(cachePath))) {
+			// Check if we have read/write access to the ~/.cache path
+			gazetteerFolder = cachePath;
+		} else if (tempPath.toFile().mkdirs() || (Files.isReadable(tempPath) && Files.isWritable(tempPath))) {
+			// Check if we have read/write access to the /tmp/ path
+			gazetteerFolder = tempPath;
+		} else {
+			throw new IOException(String.format("Could not access output folders!\n" +
+							"Please download the taxa files your self and put them in a readable directory.\n" +
+							"Access denied: '%s'\nAccess denied: '%s'\n",
+					cachePath, tempPath));
+		}
+		gazetteerFolder.toFile().mkdirs();
+		return gazetteerFolder;
 	}
 	
 	/**

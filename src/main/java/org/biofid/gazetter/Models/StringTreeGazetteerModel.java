@@ -31,6 +31,7 @@ public class StringTreeGazetteerModel extends SkipGramGazetteerModel implements 
 
         tree = new StringTreeNode();
         skipGramSet.stream()
+                .parallel()
                 .map(skipGram -> bUseLowercase ? skipGram.toLowerCase() : skipGram)
                 .forEach(tree::insert);
 
