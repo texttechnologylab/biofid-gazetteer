@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 
 public class TestBIOfidGazetteer {
 
-    //    private String sourceLocation = "src/test/resources/taxa.zip";
-    private String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
+        private String sourceLocation = "src/test/resources/taxa.zip";
+//    private String sourceLocation = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip";
 
 //    @Test
     public void testRegularGazetteer() {
