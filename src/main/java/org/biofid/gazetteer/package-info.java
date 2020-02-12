@@ -17,4 +17,4 @@
  * @see <a href="https://www.biofid.de/">BIOfid</a>
  * @see <a href="https://www.texttechnologylab.org/">Text Technology Lab</a>
  */
-package org.biofid.gazetter;
+package org.biofid.gazetteer;

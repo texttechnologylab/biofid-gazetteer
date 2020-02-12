@@ -1,4 +1,4 @@
-package org.biofid.gazetter.run;
+package org.biofid.gazetteer.run;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -18,8 +18,8 @@ import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.CasCopier;
 import org.apache.uima.util.CasIOUtils;
-import org.biofid.gazetter.BIOfidGazetteer;
-import org.biofid.gazetter.XmiCasSerializerRunnable;
+import org.biofid.gazetteer.BIOfidGazetteer;
+import org.biofid.gazetteer.XmiCasSerializerRunnable;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import javax.xml.parsers.FactoryConfigurationError;

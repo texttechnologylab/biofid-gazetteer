@@ -1,4 +1,4 @@
-package org.biofid.gazetter.Models;
+package org.biofid.gazetteer.Models;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;

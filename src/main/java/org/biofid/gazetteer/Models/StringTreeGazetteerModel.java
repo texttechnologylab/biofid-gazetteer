@@ -1,7 +1,7 @@
-package org.biofid.gazetter.Models;
+package org.biofid.gazetteer.Models;
 
-import org.biofid.gazetter.TreeSearch.ITreeNode;
-import org.biofid.gazetter.TreeSearch.StringTreeNode;
+import org.biofid.gazetteer.TreeSearch.ITreeNode;
+import org.biofid.gazetteer.TreeSearch.StringTreeNode;
 
 import java.io.IOException;
 import java.util.stream.Stream;

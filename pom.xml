@@ -62,14 +62,14 @@
         </dependency>
         <dependency>
             <groupId>com.github.texttechnologylab</groupId>
-            <artifactId>Utilities</artifactId>
-            <version>1.0.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.texttechnologylab</groupId>
             <artifactId>UIMATypeSystem</artifactId>
             <version>1.7.5</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.texttechnologylab</groupId>
+            <artifactId>Utilities</artifactId>
+            <version>1.0.5</version>
         </dependency>
 
     </dependencies>

@@ -1,4 +1,4 @@
-package org.biofid.gazetter;
+package org.biofid.gazetteer;
 
 import org.apache.uima.cas.impl.XmiCasSerializer;
 import org.apache.uima.jcas.JCas;

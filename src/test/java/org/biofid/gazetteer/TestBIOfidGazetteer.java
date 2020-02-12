@@ -1,4 +1,4 @@
-package org.biofid.gazetter;
+package org.biofid.gazetteer;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.uima.UIMAException;
@@ -19,7 +19,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class TestBIOfidGazetteer {
 

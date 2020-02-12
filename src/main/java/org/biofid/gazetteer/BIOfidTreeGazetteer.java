@@ -1,4 +1,4 @@
-package org.biofid.gazetter;
+package org.biofid.gazetteer;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -14,11 +14,11 @@ import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
-import org.biofid.gazetter.Models.CharTreeGazetteerModel;
-import org.biofid.gazetter.Models.ITreeGazetteerModel;
-import org.biofid.gazetter.Models.SkipGramGazetteerModel;
-import org.biofid.gazetter.Models.StringTreeGazetteerModel;
-import org.biofid.gazetter.TreeSearch.ITreeNode;
+import org.biofid.gazetteer.Models.CharTreeGazetteerModel;
+import org.biofid.gazetteer.Models.ITreeGazetteerModel;
+import org.biofid.gazetteer.Models.SkipGramGazetteerModel;
+import org.biofid.gazetteer.Models.StringTreeGazetteerModel;
+import org.biofid.gazetteer.TreeSearch.ITreeNode;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package org.biofid.gazetter.TreeSearch;
+package org.biofid.gazetteer.TreeSearch;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
