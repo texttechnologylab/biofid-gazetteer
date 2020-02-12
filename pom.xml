@@ -160,6 +160,9 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.0</version>
+                <configuration>
+                    <argLine>-Xmx16G -Dorg.apache.uima.logger.class=org.apache.uima.util.impl.Log4jLogger_impl</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>
