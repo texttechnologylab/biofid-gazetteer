@@ -1,7 +1,7 @@
 package org.biofid.gazetteer.Models;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
 import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.io.IOUtils;
@@ -37,7 +37,7 @@ public class SkipGramGazetteerModel {
 	public LinkedHashSet<String> skipGramSet;
 	public LinkedHashMap<String, HashSet<URI>> taxonUriMap;
 	public LinkedHashMap<String, String> skipGramTaxonLookup;
-	public HashMap<String, List<String>> taxonSkipGramMap;
+	public HashMap<String, HashSet<String>> taxonSkipGramMap;
 	public static boolean getAllSkips;
 	public static boolean splitHyphen;
 	
@@ -104,11 +104,11 @@ public class SkipGramGazetteerModel {
 			System.err.printf("%s: Merged %d duplicate taxa!\n", this.getClass().getSimpleName(), duplicateKeys.get());
 		duplicateKeys.set(0);
 		
-		// Map: Taxon -> [Skip-Grams]
+		// Map: Taxon -> {Skip-Grams}
 		taxonSkipGramMap = taxonUriMap.keySet().stream()
 				.collect(Collectors.toMap(
 						Function.identity(),
-						SkipGramGazetteerModel::getSkipGramsAsList,
+						SkipGramGazetteerModel::getSkipGrams,
 						(u, v) -> v,
 						HashMap::new));
 		
@@ -147,7 +147,7 @@ public class SkipGramGazetteerModel {
 	 * @param skipGram the target Skip-Gram
 	 * @return taxonUriMap.get(skipGramTaxonLookup.get ( skipGram))
 	 */
-	public Set<URI> getUriFromSkipGram(String skipGram) {
+	public HashSet<URI> getUriFromSkipGram(String skipGram) {
 		return taxonUriMap.get(skipGramTaxonLookup.get(skipGram));
 	}
 	
@@ -157,7 +157,7 @@ public class SkipGramGazetteerModel {
 	 * @param taxon The taxon to get the skip-grams from
 	 * @return A list of skip-grams.
 	 */
-	public List<String> getSkipGramsFromTaxon(String taxon) {
+	public HashSet<String> getSkipGramsFromTaxon(String taxon) {
 		return taxonSkipGramMap.get(taxon);
 	}
 	
@@ -258,8 +258,18 @@ public class SkipGramGazetteerModel {
 	 * @param pString the target String.
 	 * @return a List of Strings.
 	 */
-	private static List<String> getSkipGramsAsList(String pString) {
-		return getSkipGrams(pString).collect(Collectors.toList());
+	private static HashSet<String> getSkipGrams(String pString) {
+		HashSet<String> basicSkipGrams = getSkipGramsStream(pString).collect(Collectors.toCollection(HashSet::new));
+		ArrayList<String> words = getWords(pString);
+		if (words.size() > 1) {
+			words.set(0, pString.charAt(0) + ".");
+			String abbreviatedString = String.join(" ", words);
+			basicSkipGrams.add(abbreviatedString);
+			if (words.size() > 2) {
+				basicSkipGrams.addAll(getSkipGramsStream(abbreviatedString).collect(Collectors.toCollection(HashSet::new)));
+			}
+		}
+		return basicSkipGrams;
 	}
 	
 	/**
@@ -271,13 +281,8 @@ public class SkipGramGazetteerModel {
 	 * @param pString the target String.
 	 * @return a Stream of Strings.
 	 */
-	private static Stream<String> getSkipGrams(String pString) {
-		ImmutableList<String> words;
-		if (splitHyphen) {
-			words = ImmutableList.copyOf(pString.split("[\\s\n\\-]+"));
-		} else {
-			words = ImmutableList.copyOf(pString.split("[\\s\n]+"));
-		}
+	private static Stream<String> getSkipGramsStream(String pString) {
+		ArrayList<String> words = getWords(pString);
 		if (words.size() < 3) {
 			return Stream.of(pString);
 		} else {
@@ -305,6 +310,16 @@ public class SkipGramGazetteerModel {
 						return String.join(" ", strings);
 					});
 		}
+	}
+	
+	private static ArrayList<String> getWords(String pString) {
+		ArrayList<String> words;
+		if (splitHyphen) {
+			words = Lists.newArrayList(pString.split("[\\s\n\\-]+"));
+		} else {
+			words = Lists.newArrayList(pString.split("[\\s\n]+"));
+		}
+		return words;
 	}
 	
 	/**

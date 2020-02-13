@@ -25,7 +25,11 @@ import java.util.stream.Collectors;
 
 /**
  * UIMA Engine for tagging taxa from taxonomic lists or gazetteers as resource.
+ *
+ * @deprecated Use {@link BIOfidTreeGazetteer} instead. Will be removed in future versions.
  */
+@Deprecated
+
 public class BIOfidGazetteer extends SegmenterBase {
 	
 	/**

@@ -85,12 +85,15 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	
 	/**
-	 * Boolean, if true, force tagging over entire document text instead text covered by {@link Sentence Sentences}.
+	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text,
+	 * which is run in parallel and should be faster. Do not use this if there are a a lot of abbreviations in the text
+	 * that might interfere with correct end-of-sentence tagging.
+	 * <p>
 	 * Default: false.
 	 */
-	public static final String PARAM_FORCE_DOCUMENT_TEXT_TAGGING = "pForceDocumentTextTagging";
-	@ConfigurationParameter(name = PARAM_FORCE_DOCUMENT_TEXT_TAGGING, mandatory = false, defaultValue = "false")
-	private boolean pForceDocumentTextTagging;
+	public static final String PARAM_USE_SENTECE_LEVEL_TAGGING = "pUseSentenceLevelTagging";
+	@ConfigurationParameter(name = PARAM_USE_SENTECE_LEVEL_TAGGING, mandatory = false, defaultValue = "false")
+	private boolean pUseSentenceLevelTagging;
 	
 	MappingProvider namedEntityMappingProvider;
 	
@@ -143,7 +146,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		tagAllMatches(aJCas);
 	}
 	
-	private class Match {
+	private static class Match {
 		
 		final int start;
 		final int end;
@@ -163,10 +166,10 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 */
 	private void tagAllMatches(JCas aJCas) {
 		Collection<Sentence> sentences = JCasUtil.select(aJCas, Sentence.class);
-		if (pForceDocumentTextTagging || sentences.isEmpty()) {
+		if (!pUseSentenceLevelTagging || sentences.isEmpty()) {
 			getLogger().info(
 					String.format("%s, tagging entire document text.",
-							pForceDocumentTextTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences")
+							pUseSentenceLevelTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences")
 			);
 			tagEntireText(aJCas);
 		} else {
