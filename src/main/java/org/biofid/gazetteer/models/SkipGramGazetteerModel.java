@@ -1,4 +1,4 @@
-package org.biofid.gazetteer.Models;
+package org.biofid.gazetteer.models;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;

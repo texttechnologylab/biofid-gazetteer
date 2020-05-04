@@ -12,7 +12,7 @@ import org.apache.uima.resource.ResourceInitializationException;
 import org.dkpro.core.api.parameter.ComponentParameters;
 import org.dkpro.core.api.resources.MappingProvider;
 import org.dkpro.core.api.segmentation.SegmenterBase;
-import org.biofid.gazetteer.Models.SkipGramGazetteerModel;
+import org.biofid.gazetteer.models.SkipGramGazetteerModel;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;

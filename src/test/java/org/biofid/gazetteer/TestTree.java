@@ -2,8 +2,8 @@ package org.biofid.gazetteer;
 
 import com.google.common.base.Strings;
 import org.apache.commons.io.IOUtils;
-import org.biofid.gazetteer.TreeSearch.CharTreeNode;
-import org.biofid.gazetteer.TreeSearch.StringTreeNode;
+import org.biofid.gazetteer.search.CharTreeNode;
+import org.biofid.gazetteer.search.StringTreeNode;
 import org.junit.Test;
 
 import java.io.*;
