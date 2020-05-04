@@ -1,6 +1,7 @@
 package org.biofid.gazetter;
 
-import org.apache.logging.log4j.util.Strings;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -119,6 +120,6 @@ public class StringTreeNode {
 			}
 			children = String.join(",\n", strings) + "";
 		}
-		return node + (Strings.isNotBlank(node) && Strings.isNotBlank(children) ? ", " : "") + children;
+		return node + (StringUtils.isNotBlank(node) && StringUtils.isNotBlank(children) ? ", " : "") + children;
 	}
 }
