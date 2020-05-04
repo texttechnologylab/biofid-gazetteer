@@ -1,6 +1,6 @@
 package org.biofid.gazetteer.TreeSearch;
 
-import org.apache.logging.log4j.util.Strings;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -129,7 +129,7 @@ public class CharTreeNode implements ITreeNode {
             }
             children = String.join(",\n", strings) + "";
         }
-        String s = node + (Strings.isNotBlank(node) && Strings.isNotBlank(children) ? ", " : "") + children;
+        String s = node + (StringUtils.isNotBlank(node) && StringUtils.isNotBlank(children) ? ", " : "") + children;
 
         if (this.parent == null)
             return "{\"StringTree\": {" + s + "}}";

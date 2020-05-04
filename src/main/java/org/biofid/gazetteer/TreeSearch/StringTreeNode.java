@@ -1,6 +1,6 @@
 package org.biofid.gazetteer.TreeSearch;
 
-import org.apache.logging.log4j.util.Strings;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -100,9 +100,9 @@ public class StringTreeNode implements ITreeNode {
 			// Try to find the key without any dots at the end of the string
 			key = this.getKey(subString, this.getIndexDot(subString, noDotPattern));
 		}
-  
+		
 		if (this.children.containsKey(key)) {
-            String newSubString = subString.length() > (key.length() + 1) ? subString.substring(key.length() + 1) : "";
+			String newSubString = subString.length() > (key.length() + 1) ? subString.substring(key.length() + 1) : "";
 			return this.children.get(key).traverse(newSubString, lastValue);
 		} else
 			return lastValue;
@@ -158,7 +158,7 @@ public class StringTreeNode implements ITreeNode {
 			}
 			children = String.join(",\n", strings) + "";
 		}
-		String s = node + (Strings.isNotBlank(node) && Strings.isNotBlank(children) ? ", " : "") + children;
+		String s = node + (StringUtils.isNotBlank(node) && StringUtils.isNotBlank(children) ? ", " : "") + children;
 		
 		if (this.parent == null)
 			return "{\"StringTree\": {" + s + "}}";
