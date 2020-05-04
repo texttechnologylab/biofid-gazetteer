@@ -7,6 +7,10 @@
         <layout class="org.apache.log4j.PatternLayout">
             <param name="ConversionPattern" value="%d{HH:mm:ss.SSS} %5p [%t] (%F:%L) - %m%n"/>
         </layout>
+        <filter class="org.apache.log4j.filter.StringMatchFilter">
+            <param name="StringToMatch" value="Import by name" />
+            <param name="AcceptOnMatch" value="false"/>
+        </filter>
     </appender>
 
     <root>
