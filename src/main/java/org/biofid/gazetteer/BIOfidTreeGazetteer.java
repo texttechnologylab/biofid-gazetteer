@@ -3,6 +3,7 @@ package org.biofid.gazetteer;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Lemma;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
 import org.apache.uima.UimaContext;
@@ -11,6 +12,7 @@ import org.apache.uima.cas.Type;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
+import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.biofid.gazetteer.models.CharTreeGazetteerModel;
 import org.biofid.gazetteer.models.ITreeGazetteerModel;
@@ -27,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -93,6 +97,24 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	private static String pTaggingTypeName;
 	
 	/**
+	 * If true, use {@link Lemma Lemmata} instead of {@link Token forms} for tagging. Default: true.
+	 */
+	public static final String PARAM_USE_LEMMATA = "pUseLemmata";
+	@ConfigurationParameter(name = PARAM_USE_LEMMATA, mandatory = false, defaultValue = "true")
+	private static Boolean pUseLemmata;
+	
+	/**
+	 * The pattern for the next-word-search after passing a single token/charater
+	 */
+	public static final String PARAM_NEXT_WORD_PATTERN = "pNextWordPattern";
+	@ConfigurationParameter(
+			name = PARAM_NEXT_WORD_PATTERN,
+			defaultValue = "[ (){}\\[\\],.!;:\\-_]+.*"
+	)
+	private String pNextWordPattern;
+	private Pattern nextWordPattern;
+	
+	/**
 	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text, which is run
 	 * in parallel and should be faster. Do not use this if there are a a lot of abbreviations in the text that might
 	 * interfere with correct end-of-sentence tagging.
@@ -107,7 +129,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
 	SkipGramGazetteerModel skipGramGazetteerModel;
-	private ArrayList<Token> tokens;
+	private ArrayList<Annotation> tokens;
 	private HashMap<Integer, Integer> tokenBeginIndex;
 	private HashMap<Integer, Integer> tokenEndIndex;
 	private Type taggingType;
@@ -118,7 +140,9 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		namedEntityMappingProvider = new MappingProvider();
 		namedEntityMappingProvider.setDefault(MappingProvider.LOCATION, "classpath:/org/hucompute/textimager/biofid/lib/ner-default.map");
 		namedEntityMappingProvider.setDefault(MappingProvider.BASE_TYPE, NamedEntity.class.getName());
-		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, "de");
+		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, language);
+		
+		nextWordPattern = Pattern.compile(pNextWordPattern, Pattern.UNICODE_CHARACTER_CLASS);
 		
 		try {
 			if (!pUseStringTree) {
@@ -144,11 +168,15 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		if (aJCas.getDocumentText().trim().length() == 0)
 			return;
 		
-		tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
+		if (!pUseLemmata)
+			tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
+		else
+			tokens = Lists.newArrayList(JCasUtil.select(aJCas, Lemma.class));
+		
 		tokenBeginIndex = new HashMap<>();
 		tokenEndIndex = new HashMap<>();
 		for (int i = 0; i < tokens.size(); i++) {
-			Token token = tokens.get(i);
+			Annotation token = tokens.get(i);
 			tokenBeginIndex.put(token.getBegin(), i);
 			tokenEndIndex.put(token.getEnd(), i);
 		}
@@ -209,11 +237,11 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 				.forEach(m -> addAnnotation(aJCas, m));
 	}
 	
-	private ArrayList<Match> findAllMatches(ITreeNode root, String query, int globalOffset) {
+	private ArrayList<Match> findAllMatches(ITreeNode root, final String query, int globalOffset) {
+		Matcher matcher = nextWordPattern.matcher(query);
 		ArrayList<Match> matches = new ArrayList<>();
-		int offset = -1;
+		int offset = 0;
 		do {
-			offset++;
 			String substring = query.substring(offset);
 			String matchedString = root.traverse(substring);
 			if (!Strings.isNullOrEmpty(matchedString)) {
@@ -225,7 +253,11 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 				}
 				offset += matchedString.length();
 			}
-			offset = query.indexOf(" ", offset + 1);
+			if (matcher.find(offset)) {
+				offset = matcher.start() + 1;
+			} else {
+				offset = -1;
+			}
 		} while (offset < query.length() && offset > -1);
 		return matches;
 	}
@@ -233,8 +265,8 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	private void addAnnotation(JCas aJCas, Match match) {
 		try {
-			Token fromToken = tokens.get(tokenBeginIndex.get(match.start));
-			Token toToken = tokens.get(tokenEndIndex.get(match.end));
+			Annotation fromToken = tokens.get(tokenBeginIndex.get(match.start));
+			Annotation toToken = tokens.get(tokenEndIndex.get(match.end));
 			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(taggingType, fromToken.getBegin(), toToken.getEnd());
 			
 			String tag = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);

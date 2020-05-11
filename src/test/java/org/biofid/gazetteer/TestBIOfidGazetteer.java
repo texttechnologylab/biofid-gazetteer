@@ -48,6 +48,7 @@ public class TestBIOfidGazetteer {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
 					BIOfidTreeGazetteer.class,
 					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
 					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false,
 					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, false,
 					BIOfidTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true
@@ -65,6 +66,7 @@ public class TestBIOfidGazetteer {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
 					BIOfidTreeGazetteer.class,
 					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
 					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false,
 					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, false
 			));
@@ -81,7 +83,8 @@ public class TestBIOfidGazetteer {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
 					BIOfidTreeGazetteer.class,
 					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false,
+					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
+					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, true,
 					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true,
 					BIOfidTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true
 			));
@@ -98,7 +101,8 @@ public class TestBIOfidGazetteer {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
 					BIOfidTreeGazetteer.class,
 					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, false,
+					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
+					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, true,
 					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true
 			));
 			
