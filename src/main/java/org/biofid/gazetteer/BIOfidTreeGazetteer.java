@@ -227,8 +227,8 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 			Token toToken = tokens.get(tokenEndIndex.get(match.end));
 			Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
 			
-			String tax = skipGramGazetteerModel.skipGramTaxonLookup.get(match.value);
-			String uris = skipGramGazetteerModel.taxonUriMap.get(tax).stream()
+			String tax = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
+			String uris = skipGramGazetteerModel.getTaxonUriMap().get(tax).stream()
 					.map(URI::toString)
 					.collect(Collectors.joining(","));
 			taxon.setValue(uris);

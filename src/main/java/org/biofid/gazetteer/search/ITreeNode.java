@@ -24,4 +24,6 @@ public interface ITreeNode {
 
     @Override
     String toString();
+    
+    String getValue();
 }

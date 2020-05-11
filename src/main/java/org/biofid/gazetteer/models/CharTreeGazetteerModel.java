@@ -26,20 +26,19 @@ public class CharTreeGazetteerModel extends SkipGramGazetteerModel implements IT
     public CharTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen) throws IOException {
         super(aSourceLocations, bUseLowercase, sLanguage, dMinLength, bAllSkips, bSplitHyphen);
         long startTime = System.currentTimeMillis();
-
-        System.out.printf("%s: Building tree..\n", this.getClass().getSimpleName());
+    
+        logger.info("Building tree..");
 
         tree = new CharTreeNode();
         skipGramSet.stream()
                 .parallel()
                 .map(skipGram -> bUseLowercase ? skipGram.toLowerCase() : skipGram)
                 .forEach(tree::insert);
-
-        System.out.printf(
-                "%s: Finished building tree with %d nodes from %d skip-grams in %dms.\n",
-                this.getClass().getSimpleName(), tree.size(), skipGramSet.size(),
-                System.currentTimeMillis() - startTime
-        );
+    
+        logger.info(String.format(
+                "Finished building tree with %d nodes from %d skip-grams in %dms.%n",
+                tree.size(), skipGramSet.size(),                System.currentTimeMillis() - startTime
+        ));
     }
 
     @Override

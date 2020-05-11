@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,10 +17,11 @@ import java.util.regex.Pattern;
 public class StringTreeNode implements ITreeNode {
 	
 	public final StringTreeNode parent;
-	public final ConcurrentHashMap<String, StringTreeNode> children;
-	public String value;
-	private Pattern dotPattern = Pattern.compile("[^\\p{Alnum}.-]", Pattern.UNICODE_CHARACTER_CLASS);
-	private Pattern noDotPattern = Pattern.compile("[^\\p{Alnum}-]", Pattern.UNICODE_CHARACTER_CLASS);
+	public final ConcurrentMap<String, StringTreeNode> children;
+	
+	private String value;
+	private final Pattern dotPattern = Pattern.compile("[^\\p{Alnum}.-]", Pattern.UNICODE_CHARACTER_CLASS);
+	private final Pattern noDotPattern = Pattern.compile("[^\\p{Alnum}-]", Pattern.UNICODE_CHARACTER_CLASS);
 	
 	
 	/**
@@ -104,8 +106,9 @@ public class StringTreeNode implements ITreeNode {
 		if (this.children.containsKey(key)) {
 			String newSubString = subString.length() > (key.length() + 1) ? subString.substring(key.length() + 1) : "";
 			return this.children.get(key).traverse(newSubString, lastValue);
-		} else
+		} else {
 			return lastValue;
+		}
 	}
 	
 	private String getKey(String subString, int index) {
@@ -150,19 +153,24 @@ public class StringTreeNode implements ITreeNode {
 		if (this.hasValue()) {
 			node = String.format("\"isLeaf\":\"%b\", \"value\":\"%s\"", this.isLeaf(), value);
 		}
-		String children = "";
+		String sChildren = "";
 		if (!this.isLeaf()) {
 			ArrayList<String> strings = new ArrayList<>();
 			for (Map.Entry<String, StringTreeNode> entry : this.children.entrySet()) {
 				strings.add(String.format("\"%s\": {%s}", entry.getKey(), entry.getValue().toString()));
 			}
-			children = String.join(",\n", strings) + "";
+			sChildren = String.join(",\n", strings) + "";
 		}
-		String s = node + (StringUtils.isNotBlank(node) && StringUtils.isNotBlank(children) ? ", " : "") + children;
+		String s = node + (StringUtils.isNotBlank(node) && StringUtils.isNotBlank(sChildren) ? ", " : "") + sChildren;
 		
 		if (this.parent == null)
 			return "{\"StringTree\": {" + s + "}}";
 		else
 			return s;
+	}
+	
+	@Override
+	public String getValue() {
+		return value;
 	}
 }
