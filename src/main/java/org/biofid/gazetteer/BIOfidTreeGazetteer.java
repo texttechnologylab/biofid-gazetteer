@@ -7,6 +7,7 @@ import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
 import org.apache.uima.UimaContext;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
+import org.apache.uima.cas.Type;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
@@ -19,7 +20,6 @@ import org.biofid.gazetteer.search.ITreeNode;
 import org.dkpro.core.api.parameter.ComponentParameters;
 import org.dkpro.core.api.resources.MappingProvider;
 import org.dkpro.core.api.segmentation.SegmenterBase;
-import org.texttechnologylab.annotation.type.Taxon;
 
 import java.io.IOException;
 import java.net.URI;
@@ -83,11 +83,19 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@ConfigurationParameter(name = PARAM_USE_STRING_TREE, mandatory = false, defaultValue = "true")
 	protected static Boolean pUseStringTree;
 	
+	/**
+	 * {@link Type} name (fully qualified class name) of the class to tag. Must subclass {@link NamedEntity}.
+	 */
+	public static final String PARAM_TAGGING_TYPE_NAME = "pTaggingTypeName";
+	@ConfigurationParameter(
+			name = PARAM_TAGGING_TYPE_NAME
+	)
+	private static String pTaggingTypeName;
 	
 	/**
-	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text,
-	 * which is run in parallel and should be faster. Do not use this if there are a a lot of abbreviations in the text
-	 * that might interfere with correct end-of-sentence tagging.
+	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text, which is run
+	 * in parallel and should be faster. Do not use this if there are a a lot of abbreviations in the text that might
+	 * interfere with correct end-of-sentence tagging.
 	 * <p>
 	 * Default: false.
 	 */
@@ -102,6 +110,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	private ArrayList<Token> tokens;
 	private HashMap<Integer, Integer> tokenBeginIndex;
 	private HashMap<Integer, Integer> tokenEndIndex;
+	private Type taggingType;
 	
 	@Override
 	public void initialize(UimaContext aContext) throws ResourceInitializationException {
@@ -130,6 +139,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@Override
 	protected void process(JCas aJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
 		namedEntityMappingProvider.configure(aJCas.getCas());
+		taggingType = aJCas.getTypeSystem().getType(pTaggingTypeName);
 		
 		if (aJCas.getDocumentText().trim().length() == 0)
 			return;
@@ -184,7 +194,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		query = pUseLowercase ? query.toLowerCase() : query;
 		ITreeNode root = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
 		
-		findAllMatches(root, query, 0).forEach(m -> addTaxon(aJCas, m));
+		findAllMatches(root, query, 0).forEach(m -> addAnnotation(aJCas, m));
 	}
 	
 	private void tagSentences(JCas aJCas, Collection<Sentence> sentences) {
@@ -196,7 +206,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 					query = pUseLowercase ? query.toLowerCase() : query;
 					return findAllMatches(root, query, sentence.getBegin()).stream();
 				})
-				.forEach(m -> addTaxon(aJCas, m));
+				.forEach(m -> addAnnotation(aJCas, m));
 	}
 	
 	private ArrayList<Match> findAllMatches(ITreeNode root, String query, int globalOffset) {
@@ -221,18 +231,19 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	}
 	
 	
-	private void addTaxon(JCas aJCas, Match match) {
+	private void addAnnotation(JCas aJCas, Match match) {
 		try {
 			Token fromToken = tokens.get(tokenBeginIndex.get(match.start));
 			Token toToken = tokens.get(tokenEndIndex.get(match.end));
-			Taxon taxon = new Taxon(aJCas, fromToken.getBegin(), toToken.getEnd());
+			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(taggingType, fromToken.getBegin(), toToken.getEnd());
 			
-			String tax = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
-			String uris = skipGramGazetteerModel.getTaxonUriMap().get(tax).stream()
+			String tag = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
+			String uris = skipGramGazetteerModel.getTaxonUriMap().get(tag).stream()
 					.map(URI::toString)
 					.collect(Collectors.joining(","));
-			taxon.setValue(uris);
-			aJCas.addFsToIndexes(taxon);
+			annotation.setValue(uris);
+			
+			aJCas.addFsToIndexes(annotation);
 		} catch (NullPointerException e) {
 			// FIXME: Remove this
 			System.err.println(e.getMessage());
