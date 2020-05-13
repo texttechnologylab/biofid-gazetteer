@@ -55,8 +55,7 @@ public class CharTreeNode implements ITreeNode {
 		this.insert(value, value);
 	}
 	
-	@Override
-	public void insert(String subString, final String value) {
+	private void insert(String subString, final String value) {
 		if (subString.length() == 0) {
 			synchronized (this.children) {
 				this.value = value;
@@ -78,8 +77,7 @@ public class CharTreeNode implements ITreeNode {
 		return this.traverse(subString, null);
 	}
 	
-	@Override
-	public String traverse(@Nonnull String subString, @Nullable String lastValue) {
+	private String traverse(@Nonnull String subString, @Nullable String lastValue) {
 		if (subString.length() == 0) {
 			return this.value == null ? lastValue : this.value;
 		}

@@ -4,8 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -53,39 +52,31 @@ public class StringTreeNode implements ITreeNode {
 	}
 	
 	public void insert(String value) {
-		this.insert(value.trim(), value);
+		ArrayDeque<String> arrayDeque = new ArrayDeque<>();
+		Collections.addAll(arrayDeque, dotPattern.split(value.trim()));
+		this.insert(arrayDeque, value);
 	}
 	
-	public void insert(String subString, final String value) {
-		if (subString.length() == 0) {
-			synchronized (this.children) {
-				this.value = value;
-				return;
-			}
+	private void insert(ArrayDeque<String> stringDeque, final String value) {
+		if (stringDeque.isEmpty()) {
+			this.value = value;
+			return;
 		}
 		
-		// Find the index while excluding any abbreviation dots
-		int index = getIndexDot(subString, dotPattern);
-		
-		String key;
-		key = getKey(subString, index);
+		String key = stringDeque.pop();
 		synchronized (this.children) {
 			if (!this.children.containsKey(key)) {
 				this.children.put(key, new StringTreeNode(this));
 			}
 		}
-		if (index > 0) {
-			this.children.get(key).insert(subString.substring(index + 1), value);
-		} else {
-			this.children.get(key).insert("", value);
-		}
+		this.children.get(key).insert(stringDeque, value);
 	}
 	
 	public String traverse(@Nonnull String fullString) {
 		return this.traverse(fullString, null);
 	}
 	
-	public String traverse(@Nonnull String subString, @Nullable String lastValue) {
+	private String traverse(@Nonnull String subString, @Nullable String lastValue) {
 		if (subString.length() == 0) {
 			return this.value == null ? lastValue : this.value;
 		}

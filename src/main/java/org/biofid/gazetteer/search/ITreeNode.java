@@ -10,8 +10,6 @@ public interface ITreeNode {
 
     void insert(String value);
 
-    void insert(String subString, String value);
-
     int size();
 
     int leafs();
@@ -19,8 +17,6 @@ public interface ITreeNode {
     int nodesWithValue();
 
     String traverse(@Nonnull String subString);
-
-    String traverse(@Nonnull String subString, @Nullable String lastValue);
 
     @Override
     String toString();
