@@ -89,7 +89,7 @@ public class BIOfidGazetteer extends SegmenterBase {
 		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, "de");
 		
 		try {
-			skipGramGazetteerModel = new SkipGramGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+			skipGramGazetteerModel = new SkipGramGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, true, 3);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

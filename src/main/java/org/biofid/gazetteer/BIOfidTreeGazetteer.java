@@ -125,6 +125,10 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@ConfigurationParameter(name = PARAM_USE_SENTECE_LEVEL_TAGGING, mandatory = false, defaultValue = "false")
 	private boolean pUseSentenceLevelTagging;
 	
+	public static final String PARAM_ADD_ABBREVIATED_TAXA = "pAddAbbreviatedTaxa";
+	@ConfigurationParameter(name = PARAM_ADD_ABBREVIATED_TAXA, mandatory = false, defaultValue = "true")
+	private boolean pAddAbbreviatedTaxa;
+	
 	MappingProvider namedEntityMappingProvider;
 	
 	final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
@@ -146,9 +150,9 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		
 		try {
 			if (!pUseStringTree) {
-				skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+				skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
 			} else {
-				skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen);
+				skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -272,7 +276,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 			String tag = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
 			String uris = skipGramGazetteerModel.getTaxonUriMap().get(tag).stream()
 					.map(URI::toString)
-					.collect(Collectors.joining(","));
+					.collect(Collectors.joining(", "));
 			annotation.setValue(uris);
 			
 			aJCas.addFsToIndexes(annotation);

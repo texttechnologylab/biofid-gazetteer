@@ -77,12 +77,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.texttechnologylab</groupId>
-            <artifactId>UIMATypeSystem</artifactId>
-            <version>1.8.2</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.dkpro.core</groupId>
             <artifactId>dkpro-core-api-ner-asl</artifactId>
         </dependency>
@@ -97,6 +91,10 @@
         <dependency>
             <groupId>org.dkpro.core</groupId>
             <artifactId>dkpro-core-api-io-asl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.dkpro.core</groupId>
+            <artifactId>dkpro-core-io-conll-asl</artifactId>
         </dependency>
         <dependency>
             <groupId>org.dkpro.core</groupId>
@@ -130,8 +128,14 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>RELEASE</version>
+            <version>5.7.0-M1</version>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.texttechnologylab</groupId>
+            <artifactId>UIMATypeSystem</artifactId>
+            <version>1.8.2</version>
         </dependency>
     </dependencies>
     <profiles>
@@ -170,7 +174,7 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>2.22.0</version>
                         <configuration>
-                            <argLine>-Xmx16G -Dorg.apache.uima.logger.class=org.apache.uima.util.impl.Log4jLogger_impl
+                            <argLine>-Xmx32G -Dorg.apache.uima.logger.class=org.apache.uima.util.impl.Log4jLogger_impl
                             </argLine>
                         </configuration>
                     </plugin>
