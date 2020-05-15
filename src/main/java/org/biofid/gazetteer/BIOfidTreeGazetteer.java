@@ -43,7 +43,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 */
 	public static final String PARAM_LANGUAGE = ComponentParameters.PARAM_LANGUAGE;
 	@ConfigurationParameter(name = PARAM_LANGUAGE, mandatory = false, defaultValue = "de")
-	protected static String language;
+	protected String language;
 	
 	/**
 	 * Location from which the taxon data is read.
@@ -64,28 +64,28 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 */
 	public static final String PARAM_USE_LOWERCASE = "pUseLowercase";
 	@ConfigurationParameter(name = PARAM_USE_LOWERCASE, mandatory = false, defaultValue = "false")
-	protected static Boolean pUseLowercase;
+	protected Boolean pUseLowercase;
 	
 	/**
 	 * Boolean, if true get all m-skip-n-grams for which n > 2 holds, not just 1-skip-(n-1)-grams.
 	 */
 	public static final String PARAM_GET_ALL_SKIPS = "pGetAllSkips";
 	@ConfigurationParameter(name = PARAM_GET_ALL_SKIPS, mandatory = false, defaultValue = "false")
-	protected static Boolean pGetAllSkips;
+	protected Boolean pGetAllSkips;
 	
 	/**
 	 * Boolean, if not false, split taxa on spaces and hyphens too.
 	 */
 	public static final String PARAM_SPLIT_HYPEN = "pSplitHyphen";
 	@ConfigurationParameter(name = PARAM_SPLIT_HYPEN, mandatory = false, defaultValue = "true")
-	protected static Boolean pSplitHyphen;
+	protected Boolean pSplitHyphen;
 	
 	/**
 	 * Boolean, if true, use StringTree implementation. Default: true.
 	 */
 	public static final String PARAM_USE_STRING_TREE = "pUseStringTree";
 	@ConfigurationParameter(name = PARAM_USE_STRING_TREE, mandatory = false, defaultValue = "true")
-	protected static Boolean pUseStringTree;
+	protected Boolean pUseStringTree;
 	
 	/**
 	 * {@link Type} name (fully qualified class name) of the class to tag. Must subclass {@link NamedEntity}.
@@ -94,14 +94,14 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@ConfigurationParameter(
 			name = PARAM_TAGGING_TYPE_NAME
 	)
-	private static String pTaggingTypeName;
+	private String pTaggingTypeName;
 	
 	/**
 	 * If true, use {@link Lemma Lemmata} instead of {@link Token forms} for tagging. Default: true.
 	 */
 	public static final String PARAM_USE_LEMMATA = "pUseLemmata";
 	@ConfigurationParameter(name = PARAM_USE_LEMMATA, mandatory = false, defaultValue = "true")
-	private static Boolean pUseLemmata;
+	private Boolean pUseLemmata;
 	
 	/**
 	 * The pattern for the next-word-search after passing a single token/charater
@@ -150,12 +150,14 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		
 		try {
 			if (!pUseStringTree) {
+				getLogger().info(String.format("Initializing CharTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
 				skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
 			} else {
+				getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
 				skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch (IOException | ClassNotFoundException e) {
+			throw new ResourceInitializationException(e);
 		}
 	}
 	
@@ -168,6 +170,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	protected void process(JCas aJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
 		namedEntityMappingProvider.configure(aJCas.getCas());
 		taggingType = aJCas.getTypeSystem().getType(pTaggingTypeName);
+		getLogger().debug(String.format("Tagging %s", taggingType.getShortName()));
 		
 		if (aJCas.getDocumentText().trim().length() == 0)
 			return;
@@ -209,14 +212,14 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	private void tagAllMatches(JCas aJCas) {
 		Collection<Sentence> sentences = JCasUtil.select(aJCas, Sentence.class);
 		if (!pUseSentenceLevelTagging || sentences.isEmpty()) {
-			getLogger().info(
+			getLogger().debug(
 					String.format("%s, tagging entire document text.",
 							pUseSentenceLevelTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences")
 			);
 			tagEntireText(aJCas);
 		} else {
 			int sentencesLength = sentences.stream().map(Sentence::getCoveredText).collect(Collectors.joining(" ")).length();
-			getLogger().info(String.format("Tagging sentences. Coverage: %d/%d", sentencesLength, aJCas.getDocumentText().length()));
+			getLogger().debug(String.format("Tagging sentences. Coverage: %d/%d", sentencesLength, aJCas.getDocumentText().length()));
 			tagSentences(aJCas, sentences);
 		}
 	}

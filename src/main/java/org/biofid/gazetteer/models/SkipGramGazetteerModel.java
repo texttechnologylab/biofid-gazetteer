@@ -122,7 +122,7 @@ public class SkipGramGazetteerModel {
 		final AtomicInteger duplicateKeys = new AtomicInteger(0);
 		final LinkedHashMap<String, HashSet<URI>> lTaxonUriMap = new LinkedHashMap<>();
 		
-		logger.info(String.format("Loading taxa from %d files..", sourceLocations.size()));
+		logger.info(String.format("Loading entries from %d files..", sourceLocations.size()));
 		for (String sourceLocation : sourceLocations) {
 			SkipGramGazetteerModel.loadTaxaMap(sourceLocation, useLowercase, language).forEach((taxon, uri) ->
 					lTaxonUriMap.merge(taxon, uri, (uUri, vUri) -> {
@@ -130,10 +130,10 @@ public class SkipGramGazetteerModel {
 						return new HashSet<>(SetUtils.union(uUri, vUri));
 					}));
 		}
-		logger.info(String.format("Loaded %d taxa from %d files.", lTaxonUriMap.size(), sourceLocations.size()));
+		logger.info(String.format("Loaded %d entries from %d files.", lTaxonUriMap.size(), sourceLocations.size()));
 		
 		if (duplicateKeys.get() > 0)
-			logger.warn(String.format("Merged %d duplicate taxa!", duplicateKeys.get()));
+			logger.warn(String.format("Merged %d duplicate entries!", duplicateKeys.get()));
 		
 		return lTaxonUriMap;
 	}
