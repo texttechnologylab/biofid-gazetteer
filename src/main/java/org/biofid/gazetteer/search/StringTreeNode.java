@@ -1,13 +1,14 @@
 package org.biofid.gazetteer.search;
 
+import org.apache.commons.collections4.iterators.ListIteratorWrapper;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -19,14 +20,16 @@ public class StringTreeNode implements ITreeNode {
 	public final ConcurrentMap<String, StringTreeNode> children;
 	
 	private String value;
-	private final Pattern dotPattern = Pattern.compile("[^\\p{Alnum}.-]", Pattern.UNICODE_CHARACTER_CLASS);
-	private final Pattern noDotPattern = Pattern.compile("[^\\p{Alnum}-]", Pattern.UNICODE_CHARACTER_CLASS);
+	private final Pattern tokenBoundaryRegex;
+	private boolean toLowerCase;
 	
 	
 	/**
 	 * Create a root node.
 	 */
-	public StringTreeNode() {
+	public StringTreeNode(String tokenBoundaryRegex, boolean toLowerCase) {
+		this.toLowerCase = toLowerCase;
+		this.tokenBoundaryRegex = Pattern.compile(tokenBoundaryRegex, Pattern.UNICODE_CHARACTER_CLASS);
 		this.parent = null;
 		this.children = new ConcurrentHashMap<>();
 		this.value = null;
@@ -37,10 +40,11 @@ public class StringTreeNode implements ITreeNode {
 	 *
 	 * @param parent
 	 */
-	public StringTreeNode(StringTreeNode parent) {
+	public StringTreeNode(StringTreeNode parent, Pattern tokenBoundaryRegex) {
 		this.parent = parent;
 		this.children = new ConcurrentHashMap<>();
 		this.value = null;
+		this.tokenBoundaryRegex = tokenBoundaryRegex;
 	}
 	
 	public boolean hasValue() {
@@ -52,8 +56,10 @@ public class StringTreeNode implements ITreeNode {
 	}
 	
 	public void insert(String value) {
+		if (toLowerCase)
+			value = value.toLowerCase();
 		ArrayDeque<String> arrayDeque = new ArrayDeque<>();
-		Collections.addAll(arrayDeque, dotPattern.split(value.trim()));
+		Collections.addAll(arrayDeque, tokenBoundaryRegex.split(value.trim()));
 		this.insert(arrayDeque, value);
 	}
 	
@@ -66,59 +72,38 @@ public class StringTreeNode implements ITreeNode {
 		String key = stringDeque.pop();
 		synchronized (this.children) {
 			if (!this.children.containsKey(key)) {
-				this.children.put(key, new StringTreeNode(this));
+				this.children.put(key, new StringTreeNode(this, this.tokenBoundaryRegex));
 			}
 		}
 		this.children.get(key).insert(stringDeque, value);
 	}
 	
-	public String traverse(@Nonnull String fullString) {
-		return this.traverse(fullString, null);
+	public ImmutablePair<String, Integer> traverse(@Nonnull List<String> fullString) {
+		return this.traverse(new ListIteratorWrapper<>(fullString.iterator()), null);
 	}
 	
-	private String traverse(@Nonnull String subString, @Nullable String lastValue) {
-		if (subString.length() == 0) {
-			return this.value == null ? lastValue : this.value;
+	private ImmutablePair<String, Integer> traverse(@Nonnull ListIteratorWrapper<String> listIterator, @Nullable String lastValue) {
+		// if there are further tokens
+		if (listIterator.hasNext()) {
+			// save value if this node has one
+			if (this.value != null) {
+				lastValue = this.value;
+			}
+			
+			// traverse the tree recursively
+			String key = listIterator.next();
+			if (this.children.containsKey(key)) {
+				return this.children.get(key).traverse(listIterator, lastValue);
+			}
+			listIterator.previous();
 		}
 		
-		// save value if this node has one
-		if (this.value != null) {
-			lastValue = this.value;
-		}
-		
-		// Try to find key with a dot at the end of the string, if any
-		String key = this.getKey(subString, this.getIndexDot(subString, dotPattern));
-		
-		if (!this.children.containsKey(key)) {
-			// Try to find the key without any dots at the end of the string
-			key = this.getKey(subString, this.getIndexDot(subString, noDotPattern));
-		}
-		
-		if (this.children.containsKey(key)) {
-			String newSubString = subString.length() > (key.length() + 1) ? subString.substring(key.length() + 1) : "";
-			return this.children.get(key).traverse(newSubString, lastValue);
+		int previousIndex = listIterator.hasPrevious() ? listIterator.previousIndex() : -1;
+		if (this.value == null) {
+			return ImmutablePair.of(lastValue, previousIndex);
 		} else {
-			return lastValue;
+			return ImmutablePair.of(this.value, previousIndex);
 		}
-	}
-	
-	private String getKey(String subString, int index) {
-		String key;
-		if (index > 0) {
-			key = subString.substring(0, index);
-		} else {
-			key = subString;
-		}
-		return key;
-	}
-	
-	private int getIndexDot(String subString, Pattern pattern) {
-		int index = -1;
-		Matcher matcher = pattern.matcher(subString);
-		if (matcher.find()) {
-			index = matcher.start();
-		}
-		return index;
 	}
 	
 	public int size() {
@@ -158,6 +143,11 @@ public class StringTreeNode implements ITreeNode {
 			return "{\"StringTree\": {" + s + "}}";
 		else
 			return s;
+	}
+	
+	@Override
+	public int depth() {
+		return 1 + this.children.values().stream().map(StringTreeNode::depth).max(Integer::compareTo).orElse(0);
 	}
 	
 	@Override

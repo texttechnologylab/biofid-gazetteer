@@ -33,7 +33,7 @@ import java.util.zip.ZipFile;
 
 public class SkipGramGazetteerModel {
 	
-	protected static Logger logger = Logger.getLogger(SkipGramGazetteerModel.class);
+	protected static final Logger logger = Logger.getLogger(SkipGramGazetteerModel.class);
 	
 	public static final Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
 	
@@ -43,7 +43,7 @@ public class SkipGramGazetteerModel {
 	private final ArrayList<String> sourceLocations;
 	private final Boolean useLowercase;
 	private final String language;
-	private double minLength;
+	private final double minLength;
 	private final boolean getAllSkips;
 	private final boolean splitHyphen;
 	private final boolean addAbbreviatedTaxa;
@@ -51,7 +51,7 @@ public class SkipGramGazetteerModel {
 	Map<String, String> skipGramTaxonLookup;
 	Set<String> sortedSkipGramSet;
 	Map<String, HashSet<URI>> taxonUriMap;
-	private int minWordCountForSkipGrams;
+	private final int minWordCountForSkipGrams;
 	
 	/**
 	 * Create 1-skip-n-grams from each taxon in a file from a given list of files. Constructor overload for default
@@ -79,8 +79,8 @@ public class SkipGramGazetteerModel {
 	 *                                  this will be omitted.
 	 * @param bAllSkips                 If true, get all m-skip-n-grams of length n > 2.
 	 * @param bSplitHyphen              If true, taxon tokens will be split at hyphens.
-	 * @param bAddAbbreviatedTaxa
-	 * @param iMinWordCountForSkipGrams
+	 * @param bAddAbbreviatedTaxa       If true, additionally add taxa with the first token abbreviated.
+	 * @param iMinWordCountForSkipGrams The lower bound token count for the skip-gram creation.
 	 * @throws IOException
 	 */
 	public SkipGramGazetteerModel(

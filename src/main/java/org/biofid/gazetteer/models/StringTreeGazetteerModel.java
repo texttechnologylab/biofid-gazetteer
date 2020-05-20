@@ -22,18 +22,18 @@ public class StringTreeGazetteerModel extends SkipGramGazetteerModel implements 
 	 * @param bAllSkips           If true, get all m-skip-n-grams of length n > 2.
 	 * @param bSplitHyphen        If true, taxon tokens will be split at hyphens.
 	 * @param bAddAbbreviatedTaxa
+	 * @param tokenBoundaryRegex
 	 * @throws IOException
 	 */
-	public StringTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen, boolean bAddAbbreviatedTaxa) throws IOException {
+	public StringTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen, boolean bAddAbbreviatedTaxa, String tokenBoundaryRegex) throws IOException {
 		super(aSourceLocations, bUseLowercase, sLanguage, dMinLength, bAllSkips, bSplitHyphen, bAddAbbreviatedTaxa, 3);
 		long startTime = System.currentTimeMillis();
 		
 		logger.info("Building tree..");
 		
-		tree = new StringTreeNode();
+		tree = new StringTreeNode(tokenBoundaryRegex, bUseLowercase);
 		sortedSkipGramSet.stream()
 				.parallel()
-				.map(skipGram -> bUseLowercase ? skipGram.toLowerCase() : skipGram)
 				.forEach(tree::insert);
 		
 		logger.info(String.format("Finished building tree with %d nodes from %d skip-grams in %dms.",

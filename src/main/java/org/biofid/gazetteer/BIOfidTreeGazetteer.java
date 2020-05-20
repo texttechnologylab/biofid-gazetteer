@@ -6,15 +6,20 @@ import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Lemma;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.uima.UIMAException;
 import org.apache.uima.UimaContext;
+import org.apache.uima.analysis_engine.AnalysisEngine;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.cas.Type;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
+import org.apache.uima.fit.factory.AnalysisEngineFactory;
+import org.apache.uima.fit.factory.JCasFactory;
+import org.apache.uima.fit.pipeline.SimplePipeline;
 import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
-import org.biofid.gazetteer.models.CharTreeGazetteerModel;
 import org.biofid.gazetteer.models.ITreeGazetteerModel;
 import org.biofid.gazetteer.models.SkipGramGazetteerModel;
 import org.biofid.gazetteer.models.StringTreeGazetteerModel;
@@ -22,16 +27,17 @@ import org.biofid.gazetteer.search.ITreeNode;
 import org.dkpro.core.api.parameter.ComponentParameters;
 import org.dkpro.core.api.resources.MappingProvider;
 import org.dkpro.core.api.segmentation.SegmenterBase;
+import org.dkpro.core.tokit.RegexSegmenter;
 
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * UIMA Engine for tagging taxa from taxonomic lists or gazetteers as resource.
@@ -106,13 +112,12 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	/**
 	 * The pattern for the next-word-search after passing a single token/charater
 	 */
-	public static final String PARAM_NEXT_WORD_PATTERN = "pNextWordPattern";
+	public static final String PARAM_TOKEN_BOUNDARY_REGEX = "tokenBoundaryRegex";
 	@ConfigurationParameter(
-			name = PARAM_NEXT_WORD_PATTERN,
-			defaultValue = "[ (){}\\[\\],.!;:\\-_]+.*"
+			name = PARAM_TOKEN_BOUNDARY_REGEX,
+			defaultValue = "[^\\p{Alnum}-]+"
 	)
-	private String pNextWordPattern;
-	private Pattern nextWordPattern;
+	private String tokenBoundaryRegex;
 	
 	/**
 	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text, which is run
@@ -131,12 +136,14 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	MappingProvider namedEntityMappingProvider;
 	
-	final AtomicInteger atomicTaxonMatchCount = new AtomicInteger(0);
 	SkipGramGazetteerModel skipGramGazetteerModel;
 	private ArrayList<Annotation> tokens;
-	private HashMap<Integer, Integer> tokenBeginIndex;
-	private HashMap<Integer, Integer> tokenEndIndex;
+	private ConcurrentHashMap<Integer, Integer> tokenBeginIndex;
 	private Type taggingType;
+	private AnalysisEngine regexSegmenter;
+	private int skipGramTreeDepth;
+	private ITreeNode skipGramTreeRoot;
+	private JCas localJCas;
 	
 	@Override
 	public void initialize(UimaContext aContext) throws ResourceInitializationException {
@@ -146,17 +153,20 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		namedEntityMappingProvider.setDefault(MappingProvider.BASE_TYPE, NamedEntity.class.getName());
 		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, language);
 		
-		nextWordPattern = Pattern.compile(pNextWordPattern, Pattern.UNICODE_CHARACTER_CLASS);
-		
 		try {
-			if (!pUseStringTree) {
-				getLogger().info(String.format("Initializing CharTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-				skipGramGazetteerModel = new CharTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
-			} else {
-				getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-				skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa);
-			}
-		} catch (IOException | ClassNotFoundException e) {
+			regexSegmenter = AnalysisEngineFactory.createEngine(RegexSegmenter.class,
+					RegexSegmenter.PARAM_TOKEN_BOUNDARY_REGEX, tokenBoundaryRegex,
+					RegexSegmenter.PARAM_WRITE_TOKEN, true,
+					RegexSegmenter.PARAM_WRITE_FORM, false,
+					RegexSegmenter.PARAM_WRITE_SENTENCE, false);
+			
+			getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
+			skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa, tokenBoundaryRegex);
+			skipGramTreeRoot = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
+			skipGramTreeDepth = skipGramTreeRoot.depth();
+			
+			localJCas = JCasFactory.createJCas();
+		} catch (IOException | ClassNotFoundException | UIMAException e) {
 			throw new ResourceInitializationException(e);
 		}
 	}
@@ -167,113 +177,159 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	}
 	
 	@Override
-	protected void process(JCas aJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
-		namedEntityMappingProvider.configure(aJCas.getCas());
-		taggingType = aJCas.getTypeSystem().getType(pTaggingTypeName);
-		getLogger().debug(String.format("Tagging %s", taggingType.getShortName()));
+	protected void process(JCas originalJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
+		namedEntityMappingProvider.configure(originalJCas.getCas());
+		taggingType = originalJCas.getTypeSystem().getType(pTaggingTypeName);
+		tokenBeginIndex = new ConcurrentHashMap<>();
 		
-		if (aJCas.getDocumentText().trim().length() == 0)
+		if (originalJCas.getDocumentText().trim().length() == 0) {
+			getLogger().debug(String.format("Skipping empty %s", taggingType.getShortName()));
 			return;
-		
-		if (!pUseLemmata)
-			tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
-		else
-			tokens = Lists.newArrayList(JCasUtil.select(aJCas, Lemma.class));
-		
-		tokenBeginIndex = new HashMap<>();
-		tokenEndIndex = new HashMap<>();
-		for (int i = 0; i < tokens.size(); i++) {
-			Annotation token = tokens.get(i);
-			tokenBeginIndex.put(token.getBegin(), i);
-			tokenEndIndex.put(token.getEnd(), i);
 		}
 		
-		tagAllMatches(aJCas);
+		getLogger().debug(String.format("Tagging %s", taggingType.getShortName()));
+		try {
+			localJCas.reset();
+			localJCas.setDocumentText(originalJCas.getDocumentText());
+			localJCas.setDocumentLanguage(originalJCas.getDocumentLanguage());
+			
+			SimplePipeline.runPipeline(localJCas, regexSegmenter);
+			
+			if (pUseSentenceLevelTagging) {
+				JCasUtil.select(originalJCas, Sentence.class).forEach(
+						sentence -> localJCas.addFsToIndexes(new Sentence(localJCas, sentence.getBegin(), sentence.getEnd()))
+				);
+			}
+			
+			Collection<Sentence> sentences = JCasUtil.select(localJCas, Sentence.class);
+			if (!pUseSentenceLevelTagging || sentences.isEmpty()) {
+				tagEntireDocumentText(originalJCas, localJCas);
+			} else {
+				int sentencesLength = sentences.stream().map(Sentence::getCoveredText).collect(Collectors.joining(" ")).length();
+				getLogger().debug(String.format("Tagging sentences. Coverage: %d/%d", sentencesLength, localJCas.getDocumentText().length()));
+				tagSentences(originalJCas, localJCas, sentences);
+			}
+		} catch (UIMAException e) {
+			throw new AnalysisEngineProcessException(e);
+		}
 	}
 	
-	private static class Match {
+	private void tagEntireDocumentText(JCas originalJCas, JCas localJCas) {
+		getLogger().debug(String.format(
+				"%s, tagging entire document text.",
+				pUseSentenceLevelTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences"
+				)
+		);
 		
-		final int start;
-		final int end;
-		final String value;
-		
-		public Match(int start, int end, String value) {
-			this.start = start;
-			this.end = end;
-			this.value = value;
+		ArrayList<String> query = getDocumentLevelQuery(localJCas);
+		findAllMatches(skipGramTreeRoot, query, 0).forEach(m -> addAnnotation(originalJCas, m));
+	}
+	
+	private ArrayList<String> getDocumentLevelQuery(JCas aJCas) {
+		ArrayList<String> query = new ArrayList<>();
+		tokens = Lists.newArrayList(JCasUtil.select(aJCas, Lemma.class));
+		if (!pUseLemmata || tokens.isEmpty()) {
+			tokens = Lists.newArrayList(JCasUtil.select(aJCas, Token.class));
 		}
+		for (Annotation token : tokens) {
+			String qText = getAnnotationText(token);
+			query.add(qText);
+		}
+		return query;
+	}
+	
+	private void tagSentences(JCas originalJCas, JCas localJCas, Collection<Sentence> sentences) {
+		tokens = Lists.newArrayList(JCasUtil.select(localJCas, Lemma.class));
+		final ConcurrentHashMap<Sentence, Collection<Annotation>> sentenceIndex;
+		if (pUseLemmata && !tokens.isEmpty()) {
+			sentenceIndex = new ConcurrentHashMap<>(JCasUtil.indexCovered(localJCas, Sentence.class, Lemma.class));
+			for (int i = 0; i < tokens.size(); i++) {
+				tokenBeginIndex.put(tokens.get(i).getBegin(), i);
+			}
+		} else {
+			sentenceIndex = new ConcurrentHashMap<>(JCasUtil.indexCovered(localJCas, Sentence.class, Token.class));
+			tokens = Lists.newArrayList(JCasUtil.select(localJCas, Token.class));
+			for (int i = 0; i < tokens.size(); i++) {
+				tokenBeginIndex.put(tokens.get(i).getBegin(), i);
+			}
+		}
+		sentences.stream()
+				.parallel()
+				.flatMap(sentence -> {
+					ImmutablePair<Integer, ArrayList<String>> pair = getSentenceList(sentenceIndex, sentence);
+					Integer sentenceOffset = pair.left;
+					ArrayList<String> query = pair.right;
+					if (sentenceOffset < 0 || query.size() == 0) {
+						return Stream.empty();
+					}
+					return findAllMatches(skipGramTreeRoot, query, sentenceOffset).stream();
+				})
+				.collect(Collectors.toList())
+				.forEach(m -> addAnnotation(originalJCas, m));
 	}
 	
 	/**
-	 * Find and tag all occurrences of the given taxon skip gram in the
+	 * Get a list of tokens or lemmata covered by this sentence.
 	 *
-	 * @param aJCas
+	 * @param sentenceIndex The JCas containing the sentence.
+	 * @param sentence      The sentence in question.
+	 * @return A list of token or lemma values.
 	 */
-	private void tagAllMatches(JCas aJCas) {
-		Collection<Sentence> sentences = JCasUtil.select(aJCas, Sentence.class);
-		if (!pUseSentenceLevelTagging || sentences.isEmpty()) {
-			getLogger().debug(
-					String.format("%s, tagging entire document text.",
-							pUseSentenceLevelTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences")
+	private ImmutablePair<Integer, ArrayList<String>> getSentenceList(Map<Sentence, Collection<Annotation>> sentenceIndex, Sentence sentence) {
+		ArrayList<String> arrayList = new ArrayList<>();
+		ArrayList<Annotation> annotations = new ArrayList<>(sentenceIndex.get(sentence));
+		
+		int sentenceBeginIndex = -1;
+		if (annotations.size() > 0) {
+			sentenceBeginIndex = tokenBeginIndex.get(annotations.get(0).getBegin());
+			annotations.forEach(
+					annotation -> arrayList.add(getAnnotationText(annotation))
 			);
-			tagEntireText(aJCas);
+		}
+		return ImmutablePair.of(sentenceBeginIndex, arrayList);
+	}
+	
+	/**
+	 * Get the text for this annotation. Returns the lemma value if the annotation is a {@link Lemma} and its value is
+	 * not empty or null. Defaults to {@link Annotation#getCoveredText()} otherwise.
+	 *
+	 * @param annotation The annotation to get the text for.
+	 * @return The text for this annotation.
+	 */
+	private String getAnnotationText(Annotation annotation) {
+		if (annotation instanceof Lemma) {
+			String text = ((Lemma) annotation).getValue();
+			if (text == null || text.isEmpty() || text.equals("--") || text.equals("_")) {
+				text = annotation.getCoveredText();
+			}
+			return pUseLowercase ? text.toLowerCase() : text;
 		} else {
-			int sentencesLength = sentences.stream().map(Sentence::getCoveredText).collect(Collectors.joining(" ")).length();
-			getLogger().debug(String.format("Tagging sentences. Coverage: %d/%d", sentencesLength, aJCas.getDocumentText().length()));
-			tagSentences(aJCas, sentences);
+			return pUseLowercase ? annotation.getCoveredText().toLowerCase() : annotation.getCoveredText();
 		}
 	}
 	
-	private void tagEntireText(JCas aJCas) {
-		String query = aJCas.getDocumentText();
-		query = pUseLowercase ? query.toLowerCase() : query;
-		ITreeNode root = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
-		
-		findAllMatches(root, query, 0).forEach(m -> addAnnotation(aJCas, m));
-	}
-	
-	private void tagSentences(JCas aJCas, Collection<Sentence> sentences) {
-		final ITreeNode root = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
-		
-		sentences.stream()
-				.flatMap(sentence -> {
-					String query = sentence.getCoveredText();
-					query = pUseLowercase ? query.toLowerCase() : query;
-					return findAllMatches(root, query, sentence.getBegin()).stream();
-				})
-				.forEach(m -> addAnnotation(aJCas, m));
-	}
-	
-	private ArrayList<Match> findAllMatches(ITreeNode root, final String query, int globalOffset) {
-		Matcher matcher = nextWordPattern.matcher(query);
+	private ArrayList<Match> findAllMatches(ITreeNode root, final ArrayList<String> query, int globalOffset) {
 		ArrayList<Match> matches = new ArrayList<>();
 		int offset = 0;
 		do {
-			String substring = query.substring(offset);
-			String matchedString = root.traverse(substring);
-			if (!Strings.isNullOrEmpty(matchedString)) {
-				int start = offset + globalOffset;
-				int end = offset + matchedString.length() + globalOffset;
-				// TODO: implement parameter which allows to ignore the token end rule
-				if (tokenBeginIndex.containsKey(start) && tokenEndIndex.containsKey(end)) {
-					matches.add(new Match(start, end, matchedString));
-				}
-				offset += matchedString.length();
+			List<String> subList = query.subList(offset, Math.min(query.size(), offset + skipGramTreeDepth));
+			ImmutablePair<String, Integer> matchedString = root.traverse(subList);
+			if (!Strings.isNullOrEmpty(matchedString.left) && matchedString.right > -1) {
+				int start = offset;
+				int end = offset + matchedString.right;
+				matches.add(new Match(start + globalOffset, end + globalOffset, matchedString.left));
+				offset += matchedString.right;
 			}
-			if (matcher.find(offset)) {
-				offset = matcher.start() + 1;
-			} else {
-				offset = -1;
-			}
-		} while (offset < query.length() && offset > -1);
+			offset += 1;
+		} while (offset < (query.size() - skipGramTreeDepth) && offset > -1);
 		return matches;
 	}
 	
 	
 	private void addAnnotation(JCas aJCas, Match match) {
 		try {
-			Annotation fromToken = tokens.get(tokenBeginIndex.get(match.start));
-			Annotation toToken = tokens.get(tokenEndIndex.get(match.end));
+			Annotation fromToken = tokens.get(match.start);
+			Annotation toToken = tokens.get(match.end);
 			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(taggingType, fromToken.getBegin(), toToken.getEnd());
 			
 			String tag = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
@@ -286,9 +342,21 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		} catch (NullPointerException e) {
 			// FIXME: Remove this
 			System.err.println(e.getMessage());
-			System.err.println(aJCas.getDocumentText().substring(match.start, match.end + 10));
 			System.err.println(match.value);
 			e.printStackTrace();
+		}
+	}
+	
+	private static class Match {
+		
+		final int start;
+		final int end;
+		final String value;
+		
+		public Match(int start, int end, String value) {
+			this.start = start;
+			this.end = end;
+			this.value = value;
 		}
 	}
 	
