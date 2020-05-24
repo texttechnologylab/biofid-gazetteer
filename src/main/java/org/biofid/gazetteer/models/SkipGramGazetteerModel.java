@@ -187,7 +187,18 @@ public class SkipGramGazetteerModel {
 			if (sourceLocation.endsWith(".zip")) {
 				lSourceLocations.addAll(extractTaxaFiles(sourceLocation));
 			} else {
-				lSourceLocations.add(sourceLocation);
+				File sourceLocationFile = new File(sourceLocation);
+				if (sourceLocationFile.isDirectory()) {
+					String[] list = sourceLocationFile.list();
+					if (Objects.isNull(list)) {
+						continue;
+					}
+					for (String file_name : list) {
+						lSourceLocations.add(Paths.get(sourceLocation, file_name).toAbsolutePath().toString());
+					}
+				} else {
+					lSourceLocations.add(sourceLocation);
+				}
 			}
 		}
 		return lSourceLocations;
