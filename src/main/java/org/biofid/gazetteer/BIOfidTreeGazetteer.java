@@ -24,7 +24,6 @@ import org.apache.uima.jcas.JCas;
 import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.biofid.gazetteer.models.ITreeGazetteerModel;
-import org.biofid.gazetteer.models.SkipGramGazetteerModel;
 import org.biofid.gazetteer.models.StringTreeGazetteerModel;
 import org.biofid.gazetteer.search.ITreeNode;
 import org.dkpro.core.api.parameter.ComponentParameters;
@@ -71,6 +70,13 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	public static final String PARAM_MIN_LENGTH = "pMinLength";
 	@ConfigurationParameter(name = PARAM_MIN_LENGTH, mandatory = false, defaultValue = "5")
 	protected Integer pMinLength;
+	
+	/**
+	 * Minimum word count to create skips.
+	 */
+	public static final String PARAM_MIN_WORD_COUNT = "pMinWordCount";
+	@ConfigurationParameter(name = PARAM_MIN_WORD_COUNT, mandatory = false, defaultValue = "3")
+	protected Integer pMinWordCount;
 	
 	/**
 	 * Boolean, if true use lower case.
@@ -147,7 +153,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	
 	MappingProvider namedEntityMappingProvider;
 	
-	SkipGramGazetteerModel skipGramGazetteerModel;
+	StringTreeGazetteerModel stringTreeGazetteerModel;
 	private ArrayList<Annotation> tokens;
 	private ConcurrentHashMap<Integer, Integer> tokenBeginIndex;
 	private Type taggingType;
@@ -181,8 +187,19 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 						.collect(Collectors.toCollection(HashSet::new));
 			}
 			getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-			skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa, tokenBoundaryRegex, filterSet);
-			skipGramTreeRoot = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
+			stringTreeGazetteerModel = new StringTreeGazetteerModel(
+					sourceLocation,
+					pUseLowercase,
+					language,
+					pMinLength,
+					pGetAllSkips,
+					pSplitHyphen,
+					pAddAbbreviatedTaxa,
+					pMinWordCount,
+					tokenBoundaryRegex,
+					filterSet
+			);
+			skipGramTreeRoot = ((ITreeGazetteerModel) stringTreeGazetteerModel).getTree();
 			skipGramTreeDepth = skipGramTreeRoot.depth();
 			
 			localJCas = JCasFactory.createJCas();
@@ -362,8 +379,8 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 			Annotation toToken = tokens.get(match.end);
 			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(taggingType, fromToken.getBegin(), toToken.getEnd());
 			
-			String tag = skipGramGazetteerModel.getSkipGramTaxonLookup().get(match.value);
-			String uris = skipGramGazetteerModel.getTaxonUriMap().get(tag).stream()
+			String tag = stringTreeGazetteerModel.getSkipGramTaxonLookup().get(match.value);
+			String uris = stringTreeGazetteerModel.getTaxonUriMap().get(tag).stream()
 					.map(URI::toString)
 					.collect(Collectors.joining(", "));
 			annotation.setValue(uris);
