@@ -1,11 +1,14 @@
 package org.biofid.gazetteer;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Lemma;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.uima.UIMAException;
 import org.apache.uima.UimaContext;
@@ -27,14 +30,11 @@ import org.biofid.gazetteer.search.ITreeNode;
 import org.dkpro.core.api.parameter.ComponentParameters;
 import org.dkpro.core.api.resources.MappingProvider;
 import org.dkpro.core.api.segmentation.SegmenterBase;
-import org.dkpro.core.tokit.RegexSegmenter;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,6 +57,13 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	public static final String PARAM_SOURCE_LOCATION = ComponentParameters.PARAM_SOURCE_LOCATION;
 	@ConfigurationParameter(name = PARAM_SOURCE_LOCATION, mandatory = false, defaultValue = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip")
 	protected String[] sourceLocation;
+	
+	/**
+	 * File location for a single text file of words to be filtered out.
+	 */
+	public static final String PARAM_FILTER_LOCATION = "pFilterLocation";
+	@ConfigurationParameter(name = PARAM_FILTER_LOCATION, mandatory = false)
+	protected String pFilterLocation;
 	
 	/**
 	 * Minimum skip-gram string length
@@ -115,7 +122,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	public static final String PARAM_TOKEN_BOUNDARY_REGEX = "tokenBoundaryRegex";
 	@ConfigurationParameter(
 			name = PARAM_TOKEN_BOUNDARY_REGEX,
-			defaultValue = "[^\\p{Alnum}-]+"
+			defaultValue = "\\s+"
 	)
 	private String tokenBoundaryRegex;
 	
@@ -134,13 +141,17 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@ConfigurationParameter(name = PARAM_ADD_ABBREVIATED_TAXA, mandatory = false, defaultValue = "true")
 	private boolean pAddAbbreviatedTaxa;
 	
+	public static final String PARAM_RETOKENIZE = "pRetokenize";
+	@ConfigurationParameter(name = PARAM_RETOKENIZE, mandatory = false, defaultValue = "false")
+	private boolean pRetokenize;
+	
 	MappingProvider namedEntityMappingProvider;
 	
 	SkipGramGazetteerModel skipGramGazetteerModel;
 	private ArrayList<Annotation> tokens;
 	private ConcurrentHashMap<Integer, Integer> tokenBeginIndex;
 	private Type taggingType;
-	private AnalysisEngine regexSegmenter;
+	private static AnalysisEngine regexSegmenter;
 	private int skipGramTreeDepth;
 	private ITreeNode skipGramTreeRoot;
 	private JCas localJCas;
@@ -154,14 +165,23 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		namedEntityMappingProvider.setOverride(MappingProvider.LANGUAGE, language);
 		
 		try {
-			regexSegmenter = AnalysisEngineFactory.createEngine(RegexSegmenter.class,
-					RegexSegmenter.PARAM_TOKEN_BOUNDARY_REGEX, tokenBoundaryRegex,
-					RegexSegmenter.PARAM_WRITE_TOKEN, true,
-					RegexSegmenter.PARAM_WRITE_FORM, false,
-					RegexSegmenter.PARAM_WRITE_SENTENCE, false);
-			
+			if (pRetokenize) {
+				getLogger().info("Initializing UnicodeRegexSegmenter");
+				regexSegmenter = AnalysisEngineFactory.createEngine(UnicodeRegexSegmenter.class,
+						UnicodeRegexSegmenter.PARAM_TOKEN_BOUNDARY_REGEX, tokenBoundaryRegex,
+						UnicodeRegexSegmenter.PARAM_WRITE_TOKEN, true,
+						UnicodeRegexSegmenter.PARAM_WRITE_FORM, false,
+						UnicodeRegexSegmenter.PARAM_WRITE_SENTENCE, false);
+			}
+			HashSet<String> filterSet = new HashSet<>();
+			if (StringUtils.isNotEmpty(pFilterLocation)) {
+				filterSet = FileUtils.readLines(new File(pFilterLocation), Charsets.UTF_8)
+						.stream()
+						.map(String::toLowerCase)
+						.collect(Collectors.toCollection(HashSet::new));
+			}
 			getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-			skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa, tokenBoundaryRegex);
+			skipGramGazetteerModel = new StringTreeGazetteerModel(sourceLocation, pUseLowercase, language, pMinLength, pGetAllSkips, pSplitHyphen, pAddAbbreviatedTaxa, tokenBoundaryRegex, filterSet);
 			skipGramTreeRoot = ((ITreeGazetteerModel) skipGramGazetteerModel).getTree();
 			skipGramTreeDepth = skipGramTreeRoot.depth();
 			
@@ -189,16 +209,10 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		
 		getLogger().debug(String.format("Tagging %s", taggingType.getShortName()));
 		try {
-			localJCas.reset();
-			localJCas.setDocumentText(originalJCas.getDocumentText());
-			localJCas.setDocumentLanguage(originalJCas.getDocumentLanguage());
-			
-			SimplePipeline.runPipeline(localJCas, regexSegmenter);
-			
-			if (pUseSentenceLevelTagging) {
-				JCasUtil.select(originalJCas, Sentence.class).forEach(
-						sentence -> localJCas.addFsToIndexes(new Sentence(localJCas, sentence.getBegin(), sentence.getEnd()))
-				);
+			if (pRetokenize) {
+				localJCas = processLocalJCas(originalJCas);
+			} else {
+				localJCas = originalJCas;
 			}
 			
 			Collection<Sentence> sentences = JCasUtil.select(localJCas, Sentence.class);
@@ -212,6 +226,22 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		} catch (UIMAException e) {
 			throw new AnalysisEngineProcessException(e);
 		}
+	}
+	
+	private JCas processLocalJCas(JCas originalJCas) throws AnalysisEngineProcessException {
+		localJCas.reset();
+		localJCas.setDocumentText(originalJCas.getDocumentText());
+		localJCas.setDocumentLanguage(originalJCas.getDocumentLanguage());
+		
+		SimplePipeline.runPipeline(localJCas, regexSegmenter);
+		
+		if (pUseSentenceLevelTagging) {
+			JCasUtil.select(originalJCas, Sentence.class).forEach(
+					sentence -> localJCas.addFsToIndexes(new Sentence(localJCas, sentence.getBegin(), sentence.getEnd()))
+			);
+		}
+		
+		return localJCas;
 	}
 	
 	private void tagEntireDocumentText(JCas originalJCas, JCas localJCas) {

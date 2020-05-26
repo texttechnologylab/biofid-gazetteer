@@ -214,9 +214,11 @@ public class SkipGramGazetteerModel {
 		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(sourceLocation)), StandardCharsets.UTF_8))) {
 			return bufferedReader.lines()
 					.filter(s -> !Strings.isNullOrEmpty(s))
-					.map(s -> pUseLowercase ? s.toLowerCase(Locale.forLanguageTag(language)) : s)
 					.collect(Collectors.toMap(
-							s -> nonTokenCharacterClass.matcher(s.split("\t", 2)[0]).replaceAll("").trim(),
+							s -> {
+								String taxon = nonTokenCharacterClass.matcher(s.split("\t", 2)[0]).replaceAll("").trim();
+								return pUseLowercase ? taxon.toLowerCase(Locale.forLanguageTag(language)) : taxon;
+							},
 							s -> Arrays.stream(s.split("\t", 2)[1].split("[ ,]")).map(UriUtils::create).collect(Collectors.toCollection(HashSet::new)),
 							(u, v) -> new HashSet<>(SetUtils.union(u, v)),
 							LinkedHashMap::new)

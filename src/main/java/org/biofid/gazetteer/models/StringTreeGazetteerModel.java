@@ -4,11 +4,13 @@ import org.biofid.gazetteer.search.ITreeNode;
 import org.biofid.gazetteer.search.StringTreeNode;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.stream.Stream;
 
 public class StringTreeGazetteerModel extends SkipGramGazetteerModel implements ITreeGazetteerModel {
 	
 	public final StringTreeNode tree;
+	private final HashSet<String> filterSet;
 	
 	/**
 	 * Create 1-skip-n-grams from each taxon in a file from a given list of files.
@@ -23,10 +25,12 @@ public class StringTreeGazetteerModel extends SkipGramGazetteerModel implements 
 	 * @param bSplitHyphen        If true, taxon tokens will be split at hyphens.
 	 * @param bAddAbbreviatedTaxa
 	 * @param tokenBoundaryRegex
+	 * @param filterSet
 	 * @throws IOException
 	 */
-	public StringTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen, boolean bAddAbbreviatedTaxa, String tokenBoundaryRegex) throws IOException {
+	public StringTreeGazetteerModel(String[] aSourceLocations, Boolean bUseLowercase, String sLanguage, double dMinLength, boolean bAllSkips, boolean bSplitHyphen, boolean bAddAbbreviatedTaxa, String tokenBoundaryRegex, HashSet<String> filterSet) throws IOException {
 		super(aSourceLocations, bUseLowercase, sLanguage, dMinLength, bAllSkips, bSplitHyphen, bAddAbbreviatedTaxa, 3);
+		this.filterSet = filterSet;
 		long startTime = System.currentTimeMillis();
 		
 		logger.info("Building tree..");
@@ -34,6 +38,7 @@ public class StringTreeGazetteerModel extends SkipGramGazetteerModel implements 
 		tree = new StringTreeNode(tokenBoundaryRegex, bUseLowercase);
 		sortedSkipGramSet.stream()
 				.parallel()
+				.filter(entry -> !filterSet.contains(entry.toLowerCase()))
 				.forEach(tree::insert);
 		
 		logger.info(String.format("Finished building tree with %d nodes from %d skip-grams in %dms.",
