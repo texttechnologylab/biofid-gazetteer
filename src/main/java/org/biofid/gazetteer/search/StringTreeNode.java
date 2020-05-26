@@ -31,7 +31,7 @@ public class StringTreeNode implements ITreeNode {
 		this.toLowerCase = toLowerCase;
 		this.tokenBoundaryRegex = Pattern.compile(tokenBoundaryRegex, Pattern.UNICODE_CHARACTER_CLASS);
 		this.parent = null;
-		this.children = new ConcurrentHashMap<>(1);
+		this.children = new ConcurrentHashMap<>(1, 1);
 		this.value = null;
 	}
 	
@@ -42,7 +42,7 @@ public class StringTreeNode implements ITreeNode {
 	 */
 	public StringTreeNode(StringTreeNode parent, Pattern tokenBoundaryRegex) {
 		this.parent = parent;
-		this.children = new ConcurrentHashMap<>(1);
+		this.children = new ConcurrentHashMap<>(1, 1);
 		this.value = null;
 		this.tokenBoundaryRegex = tokenBoundaryRegex;
 	}

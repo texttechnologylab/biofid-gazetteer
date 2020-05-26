@@ -15,6 +15,7 @@ import org.apache.uima.UimaContext;
 import org.apache.uima.analysis_engine.AnalysisEngine;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.cas.Type;
+import org.apache.uima.cas.TypeSystem;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
 import org.apache.uima.fit.factory.AnalysisEngineFactory;
 import org.apache.uima.fit.factory.JCasFactory;
@@ -38,100 +39,49 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * UIMA Engine for tagging taxa from taxonomic lists or gazetteers as resource.
- */
-public class BIOfidTreeGazetteer extends SegmenterBase {
-	
-	/**
-	 * Text and model language. Default is "de".
-	 */
-	public static final String PARAM_LANGUAGE = ComponentParameters.PARAM_LANGUAGE;
-	@ConfigurationParameter(name = PARAM_LANGUAGE, mandatory = false, defaultValue = "de")
-	protected String language;
-	
-	/**
-	 * Location from which the taxon data is read.
-	 */
-	public static final String PARAM_SOURCE_LOCATION = ComponentParameters.PARAM_SOURCE_LOCATION;
-	@ConfigurationParameter(name = PARAM_SOURCE_LOCATION, mandatory = false, defaultValue = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip")
-	protected String[] sourceLocation;
-	
+public abstract class BaseTreeGazetteer extends SegmenterBase {
+	public static final String PARAM_ADD_ABBREVIATED_TAXA = "pAddAbbreviatedTaxa";
 	/**
 	 * File location for a single text file of words to be filtered out.
 	 */
 	public static final String PARAM_FILTER_LOCATION = "pFilterLocation";
-	@ConfigurationParameter(name = PARAM_FILTER_LOCATION, mandatory = false)
-	protected String pFilterLocation;
-	
-	/**
-	 * Minimum skip-gram string length
-	 */
-	public static final String PARAM_MIN_LENGTH = "pMinLength";
-	@ConfigurationParameter(name = PARAM_MIN_LENGTH, mandatory = false, defaultValue = "5")
-	protected Integer pMinLength;
-	
-	/**
-	 * Minimum word count to create skips.
-	 */
-	public static final String PARAM_MIN_WORD_COUNT = "pMinWordCount";
-	@ConfigurationParameter(name = PARAM_MIN_WORD_COUNT, mandatory = false, defaultValue = "3")
-	protected Integer pMinWordCount;
-	
-	/**
-	 * Boolean, if true use lower case.
-	 */
-	public static final String PARAM_USE_LOWERCASE = "pUseLowercase";
-	@ConfigurationParameter(name = PARAM_USE_LOWERCASE, mandatory = false, defaultValue = "false")
-	protected Boolean pUseLowercase;
-	
 	/**
 	 * Boolean, if true get all m-skip-n-grams for which n > 2 holds, not just 1-skip-(n-1)-grams.
 	 */
 	public static final String PARAM_GET_ALL_SKIPS = "pGetAllSkips";
-	@ConfigurationParameter(name = PARAM_GET_ALL_SKIPS, mandatory = false, defaultValue = "false")
-	protected Boolean pGetAllSkips;
-	
+	/**
+	 * Text and model language. Default is "de".
+	 */
+	public static final String PARAM_LANGUAGE = ComponentParameters.PARAM_LANGUAGE;
+	/**
+	 * Minimum skip-gram string length
+	 */
+	public static final String PARAM_MIN_LENGTH = "pMinLength";
+	/**
+	 * Minimum word count to create skips.
+	 */
+	public static final String PARAM_MIN_WORD_COUNT = "pMinWordCount";
+	public static final String PARAM_RETOKENIZE = "pRetokenize";
+	/**
+	 * Location from which the taxon data is read.
+	 */
+	public static final String PARAM_SOURCE_LOCATION = ComponentParameters.PARAM_SOURCE_LOCATION;
 	/**
 	 * Boolean, if not false, split taxa on spaces and hyphens too.
 	 */
 	public static final String PARAM_SPLIT_HYPEN = "pSplitHyphen";
-	@ConfigurationParameter(name = PARAM_SPLIT_HYPEN, mandatory = false, defaultValue = "true")
-	protected Boolean pSplitHyphen;
-	
-	/**
-	 * Boolean, if true, use StringTree implementation. Default: true.
-	 */
-	public static final String PARAM_USE_STRING_TREE = "pUseStringTree";
-	@ConfigurationParameter(name = PARAM_USE_STRING_TREE, mandatory = false, defaultValue = "true")
-	protected Boolean pUseStringTree;
-	
-	/**
-	 * {@link Type} name (fully qualified class name) of the class to tag. Must subclass {@link NamedEntity}.
-	 */
-	public static final String PARAM_TAGGING_TYPE_NAME = "pTaggingTypeName";
-	@ConfigurationParameter(
-			name = PARAM_TAGGING_TYPE_NAME
-	)
-	private String pTaggingTypeName;
-	
-	/**
-	 * If true, use {@link Lemma Lemmata} instead of {@link Token forms} for tagging. Default: true.
-	 */
-	public static final String PARAM_USE_LEMMATA = "pUseLemmata";
-	@ConfigurationParameter(name = PARAM_USE_LEMMATA, mandatory = false, defaultValue = "true")
-	private Boolean pUseLemmata;
-	
 	/**
 	 * The pattern for the next-word-search after passing a single token/charater
 	 */
 	public static final String PARAM_TOKEN_BOUNDARY_REGEX = "tokenBoundaryRegex";
-	@ConfigurationParameter(
-			name = PARAM_TOKEN_BOUNDARY_REGEX,
-			defaultValue = "\\s+"
-	)
-	private String tokenBoundaryRegex;
-	
+	/**
+	 * If true, use {@link Lemma Lemmata} instead of {@link Token forms} for tagging. Default: true.
+	 */
+	public static final String PARAM_USE_LEMMATA = "pUseLemmata";
+	/**
+	 * Boolean, if true use lower case.
+	 */
+	public static final String PARAM_USE_LOWERCASE = "pUseLowercase";
 	/**
 	 * Boolean, if true, run tagging over {@link Sentence Sentences} instead of the entire document text, which is run
 	 * in parallel and should be faster. Do not use this if there are a a lot of abbreviations in the text that might
@@ -140,27 +90,50 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 * Default: false.
 	 */
 	public static final String PARAM_USE_SENTECE_LEVEL_TAGGING = "pUseSentenceLevelTagging";
+	/**
+	 * Boolean, if true, use StringTree implementation. Default: true.
+	 */
+	public static final String PARAM_USE_STRING_TREE = "pUseStringTree";
+	protected static AnalysisEngine regexSegmenter;
+	@ConfigurationParameter(name = PARAM_LANGUAGE, mandatory = false, defaultValue = "de")
+	protected String language;
+	@ConfigurationParameter(name = PARAM_SOURCE_LOCATION, mandatory = false, defaultValue = "https://www.texttechnologylab.org/files/BIOfidTaxa.zip")
+	protected String[] sourceLocation;
+	@ConfigurationParameter(name = PARAM_FILTER_LOCATION, mandatory = false)
+	protected String pFilterLocation;
+	@ConfigurationParameter(name = PARAM_MIN_LENGTH, mandatory = false, defaultValue = "5")
+	protected Integer pMinLength;
+	@ConfigurationParameter(name = PARAM_MIN_WORD_COUNT, mandatory = false, defaultValue = "3")
+	protected Integer pMinWordCount;
+	@ConfigurationParameter(name = PARAM_USE_LOWERCASE, mandatory = false, defaultValue = "false")
+	protected Boolean pUseLowercase;
+	@ConfigurationParameter(name = PARAM_GET_ALL_SKIPS, mandatory = false, defaultValue = "false")
+	protected Boolean pGetAllSkips;
+	@ConfigurationParameter(name = PARAM_SPLIT_HYPEN, mandatory = false, defaultValue = "true")
+	protected Boolean pSplitHyphen;
+	@ConfigurationParameter(name = PARAM_USE_STRING_TREE, mandatory = false, defaultValue = "true")
+	protected Boolean pUseStringTree;
+	@ConfigurationParameter(name = PARAM_USE_LEMMATA, mandatory = false, defaultValue = "true")
+	protected Boolean pUseLemmata;
+	@ConfigurationParameter(
+			name = PARAM_TOKEN_BOUNDARY_REGEX,
+			defaultValue = "\\s+"
+	)
+	protected String tokenBoundaryRegex;
 	@ConfigurationParameter(name = PARAM_USE_SENTECE_LEVEL_TAGGING, mandatory = false, defaultValue = "false")
-	private boolean pUseSentenceLevelTagging;
-	
-	public static final String PARAM_ADD_ABBREVIATED_TAXA = "pAddAbbreviatedTaxa";
+	protected boolean pUseSentenceLevelTagging;
 	@ConfigurationParameter(name = PARAM_ADD_ABBREVIATED_TAXA, mandatory = false, defaultValue = "true")
-	private boolean pAddAbbreviatedTaxa;
-	
-	public static final String PARAM_RETOKENIZE = "pRetokenize";
+	protected boolean pAddAbbreviatedTaxa;
 	@ConfigurationParameter(name = PARAM_RETOKENIZE, mandatory = false, defaultValue = "false")
-	private boolean pRetokenize;
-	
+	protected boolean pRetokenize;
+	protected ArrayList<Annotation> tokens;
+	protected ConcurrentHashMap<Integer, Integer> tokenBeginIndex;
+	protected Type taggingType;
+	protected int skipGramTreeDepth;
+	protected ITreeNode skipGramTreeRoot;
+	protected JCas localJCas;
+	protected ITreeGazetteerModel stringTreeGazetteerModel;
 	MappingProvider namedEntityMappingProvider;
-	
-	StringTreeGazetteerModel stringTreeGazetteerModel;
-	private ArrayList<Annotation> tokens;
-	private ConcurrentHashMap<Integer, Integer> tokenBeginIndex;
-	private Type taggingType;
-	private static AnalysisEngine regexSegmenter;
-	private int skipGramTreeDepth;
-	private ITreeNode skipGramTreeRoot;
-	private JCas localJCas;
 	
 	@Override
 	public void initialize(UimaContext aContext) throws ResourceInitializationException {
@@ -179,33 +152,42 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 						UnicodeRegexSegmenter.PARAM_WRITE_FORM, false,
 						UnicodeRegexSegmenter.PARAM_WRITE_SENTENCE, false);
 			}
-			HashSet<String> filterSet = new HashSet<>();
-			if (StringUtils.isNotEmpty(pFilterLocation)) {
-				filterSet = FileUtils.readLines(new File(pFilterLocation), Charsets.UTF_8)
-						.stream()
-						.map(String::toLowerCase)
-						.collect(Collectors.toCollection(HashSet::new));
-			}
-			getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-			stringTreeGazetteerModel = new StringTreeGazetteerModel(
-					sourceLocation,
-					pUseLowercase,
-					language,
-					pMinLength,
-					pGetAllSkips,
-					pSplitHyphen,
-					pAddAbbreviatedTaxa,
-					pMinWordCount,
-					tokenBoundaryRegex,
-					filterSet
-			);
-			skipGramTreeRoot = ((ITreeGazetteerModel) stringTreeGazetteerModel).getTree();
-			skipGramTreeDepth = skipGramTreeRoot.depth();
+			
+			createTreeModel();
 			
 			localJCas = JCasFactory.createJCas();
 		} catch (IOException | ClassNotFoundException | UIMAException e) {
 			throw new ResourceInitializationException(e);
 		}
+	}
+	
+	protected void createTreeModel() throws IOException, ClassNotFoundException {
+		getLogger().info("Initializing StringTreeGazetteerModel");
+		stringTreeGazetteerModel = new StringTreeGazetteerModel(
+				sourceLocation,
+				pUseLowercase,
+				language,
+				pMinLength,
+				pGetAllSkips,
+				pSplitHyphen,
+				pAddAbbreviatedTaxa,
+				pMinWordCount,
+				tokenBoundaryRegex,
+				getFilterSet()
+		);
+		skipGramTreeRoot = ((ITreeGazetteerModel) stringTreeGazetteerModel).getTree();
+		skipGramTreeDepth = skipGramTreeRoot.depth();
+	}
+	
+	protected HashSet<String> getFilterSet() throws IOException {
+		HashSet<String> filterSet = new HashSet<>();
+		if (StringUtils.isNotEmpty(pFilterLocation)) {
+			filterSet = FileUtils.readLines(new File(pFilterLocation), Charsets.UTF_8)
+					.stream()
+					.map(String::toLowerCase)
+					.collect(Collectors.toCollection(HashSet::new));
+		}
+		return filterSet;
 	}
 	
 	@Override
@@ -216,15 +198,15 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	@Override
 	protected void process(JCas originalJCas, String text, int zoneBegin) throws AnalysisEngineProcessException {
 		namedEntityMappingProvider.configure(originalJCas.getCas());
-		taggingType = originalJCas.getTypeSystem().getType(pTaggingTypeName);
+		inferTaggingType(originalJCas.getTypeSystem());
 		tokenBeginIndex = new ConcurrentHashMap<>();
 		
 		if (originalJCas.getDocumentText().trim().length() == 0) {
-			getLogger().debug(String.format("Skipping empty %s", taggingType.getShortName()));
+			getLogger().debug("Skipping empty JCas");
 			return;
 		}
 		
-		getLogger().debug(String.format("Tagging %s", taggingType.getShortName()));
+		getLogger().debug("Tagging");
 		try {
 			if (pRetokenize) {
 				localJCas = processLocalJCas(originalJCas);
@@ -245,7 +227,9 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		}
 	}
 	
-	private JCas processLocalJCas(JCas originalJCas) throws AnalysisEngineProcessException {
+	protected abstract void inferTaggingType(TypeSystem typeSystem);
+	
+	protected JCas processLocalJCas(JCas originalJCas) throws AnalysisEngineProcessException {
 		localJCas.reset();
 		localJCas.setDocumentText(originalJCas.getDocumentText());
 		localJCas.setDocumentLanguage(originalJCas.getDocumentLanguage());
@@ -261,7 +245,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		return localJCas;
 	}
 	
-	private void tagEntireDocumentText(JCas originalJCas, JCas localJCas) {
+	protected void tagEntireDocumentText(JCas originalJCas, JCas localJCas) {
 		getLogger().debug(String.format(
 				"%s, tagging entire document text.",
 				pUseSentenceLevelTagging ? "PARAM_FORCE_DOCUMENT_TEXT_TAGGING=true" : "Found no sentences"
@@ -272,7 +256,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		findAllMatches(skipGramTreeRoot, query, 0).forEach(m -> addAnnotation(originalJCas, m));
 	}
 	
-	private ArrayList<String> getDocumentLevelQuery(JCas aJCas) {
+	protected ArrayList<String> getDocumentLevelQuery(JCas aJCas) {
 		ArrayList<String> query = new ArrayList<>();
 		tokens = Lists.newArrayList(JCasUtil.select(aJCas, Lemma.class));
 		if (!pUseLemmata || tokens.isEmpty()) {
@@ -285,7 +269,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		return query;
 	}
 	
-	private void tagSentences(JCas originalJCas, JCas localJCas, Collection<Sentence> sentences) {
+	protected void tagSentences(JCas originalJCas, JCas localJCas, Collection<Sentence> sentences) {
 		tokens = Lists.newArrayList(JCasUtil.select(localJCas, Lemma.class));
 		final ConcurrentHashMap<Sentence, Collection<Annotation>> sentenceIndex;
 		if (pUseLemmata && !tokens.isEmpty()) {
@@ -322,7 +306,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 * @param sentence      The sentence in question.
 	 * @return A list of token or lemma values.
 	 */
-	private ImmutablePair<Integer, ArrayList<String>> getSentenceList(Map<Sentence, Collection<Annotation>> sentenceIndex, Sentence sentence) {
+	protected ImmutablePair<Integer, ArrayList<String>> getSentenceList(Map<Sentence, Collection<Annotation>> sentenceIndex, Sentence sentence) {
 		ArrayList<String> arrayList = new ArrayList<>();
 		ArrayList<Annotation> annotations = new ArrayList<>(sentenceIndex.get(sentence));
 		
@@ -343,7 +327,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 	 * @param annotation The annotation to get the text for.
 	 * @return The text for this annotation.
 	 */
-	private String getAnnotationText(Annotation annotation) {
+	protected String getAnnotationText(Annotation annotation) {
 		if (annotation instanceof Lemma) {
 			String text = ((Lemma) annotation).getValue();
 			if (text == null || text.isEmpty() || text.equals("--") || text.equals("_")) {
@@ -355,7 +339,7 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		}
 	}
 	
-	private ArrayList<Match> findAllMatches(ITreeNode root, final ArrayList<String> query, int globalOffset) {
+	protected ArrayList<Match> findAllMatches(ITreeNode root, final ArrayList<String> query, int globalOffset) {
 		ArrayList<Match> matches = new ArrayList<>();
 		int offset = 0;
 		do {
@@ -372,15 +356,15 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		return matches;
 	}
 	
-	
-	private void addAnnotation(JCas aJCas, Match match) {
+	protected void addAnnotation(JCas aJCas, Match match) {
 		try {
 			Annotation fromToken = tokens.get(match.start);
 			Annotation toToken = tokens.get(match.end);
-			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(taggingType, fromToken.getBegin(), toToken.getEnd());
 			
-			String tag = stringTreeGazetteerModel.getSkipGramTaxonLookup().get(match.value);
-			String uris = stringTreeGazetteerModel.getTaxonUriMap().get(tag).stream()
+			String taxon = stringTreeGazetteerModel.getSkipGramTaxonLookup().get(match.value);
+			NamedEntity annotation = (NamedEntity) aJCas.getCas().createAnnotation(getTaggingType(taxon), fromToken.getBegin(), toToken.getEnd());
+			
+			String uris = stringTreeGazetteerModel.getTaxonUriMap().get(taxon).stream()
 					.map(URI::toString)
 					.collect(Collectors.joining(", "));
 			annotation.setValue(uris);
@@ -394,7 +378,9 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 		}
 	}
 	
-	private static class Match {
+	protected abstract Type getTaggingType(String taxon);
+	
+	protected static class Match {
 		
 		final int start;
 		final int end;
@@ -406,5 +392,4 @@ public class BIOfidTreeGazetteer extends SegmenterBase {
 			this.value = value;
 		}
 	}
-	
 }

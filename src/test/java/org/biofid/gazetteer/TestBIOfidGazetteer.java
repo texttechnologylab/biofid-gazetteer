@@ -33,13 +33,13 @@ public class TestBIOfidGazetteer {
 	public void testStringGazetteer() {
 		try {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
-					BIOfidTreeGazetteer.class,
-					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, true,
-					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true,
-					BIOfidTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true,
-					BIOfidTreeGazetteer.PARAM_USE_LEMMATA, false
+					SingleClassTreeGazetteer.class,
+					SingleClassTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+					SingleClassTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
+					SingleClassTreeGazetteer.PARAM_USE_LOWERCASE, true,
+					SingleClassTreeGazetteer.PARAM_USE_STRING_TREE, true,
+					SingleClassTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true,
+					SingleClassTreeGazetteer.PARAM_USE_LEMMATA, false
 			));
 			
 			runTest(gazetterEngine);
@@ -53,13 +53,13 @@ public class TestBIOfidGazetteer {
 	public void testStringGazetteerLemma() {
 		try {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
-					BIOfidTreeGazetteer.class,
-					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, true,
-					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true,
-					BIOfidTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true,
-					BIOfidTreeGazetteer.PARAM_USE_LEMMATA, true
+					SingleClassTreeGazetteer.class,
+					SingleClassTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+					SingleClassTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
+					SingleClassTreeGazetteer.PARAM_USE_LOWERCASE, true,
+					SingleClassTreeGazetteer.PARAM_USE_STRING_TREE, true,
+					SingleClassTreeGazetteer.PARAM_USE_SENTECE_LEVEL_TAGGING, true,
+					SingleClassTreeGazetteer.PARAM_USE_LEMMATA, true
 			));
 			
 			runTest(gazetterEngine);
@@ -73,12 +73,12 @@ public class TestBIOfidGazetteer {
 	public void testStringGazetteerDocumentLevel() {
 		try {
 			final AnalysisEngine gazetterEngine = AnalysisEngineFactory.createEngine(AnalysisEngineFactory.createEngineDescription(
-					BIOfidTreeGazetteer.class,
-					BIOfidTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
-					BIOfidTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
-					BIOfidTreeGazetteer.PARAM_USE_LOWERCASE, true,
-					BIOfidTreeGazetteer.PARAM_USE_STRING_TREE, true,
-					BIOfidTreeGazetteer.PARAM_USE_LEMMATA, false
+					SingleClassTreeGazetteer.class,
+					SingleClassTreeGazetteer.PARAM_SOURCE_LOCATION, sourceLocation,
+					SingleClassTreeGazetteer.PARAM_TAGGING_TYPE_NAME, Taxon.class.getName(),
+					SingleClassTreeGazetteer.PARAM_USE_LOWERCASE, true,
+					SingleClassTreeGazetteer.PARAM_USE_STRING_TREE, true,
+					SingleClassTreeGazetteer.PARAM_USE_LEMMATA, false
 			));
 			
 			runTest(gazetterEngine);
