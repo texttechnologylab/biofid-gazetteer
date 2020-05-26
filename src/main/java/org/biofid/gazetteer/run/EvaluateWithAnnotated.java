@@ -19,7 +19,7 @@ import org.apache.uima.resource.ResourceInitializationException;
 import org.apache.uima.util.CasCopier;
 import org.apache.uima.util.CasIOUtils;
 import org.biofid.gazetteer.SingleClassTreeGazetteer;
-import org.biofid.gazetteer.XmiCasSerializerRunnable;
+import org.biofid.gazetteer.util.XmiCasSerializerRunnable;
 import org.texttechnologylab.annotation.type.Taxon;
 
 import javax.xml.parsers.FactoryConfigurationError;

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.biofid.gazetteer;
+package org.biofid.gazetteer.util;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 

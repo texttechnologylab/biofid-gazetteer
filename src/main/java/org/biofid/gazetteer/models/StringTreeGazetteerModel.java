@@ -11,8 +11,8 @@ import org.apache.commons.math3.util.Combinations;
 import org.apache.commons.math3.util.Pair;
 import org.apache.log4j.Logger;
 import org.apache.uima.util.UriUtils;
-import org.biofid.gazetteer.search.ITreeNode;
-import org.biofid.gazetteer.search.StringTreeNode;
+import org.biofid.gazetteer.tree.ITreeNode;
+import org.biofid.gazetteer.tree.StringTreeNode;
 import org.texttechnologylab.utilities.helper.FileUtils;
 
 import java.io.*;

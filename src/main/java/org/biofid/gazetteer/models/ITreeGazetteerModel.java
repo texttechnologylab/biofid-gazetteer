@@ -1,6 +1,6 @@
 package org.biofid.gazetteer.models;
 
-import org.biofid.gazetteer.search.ITreeNode;
+import org.biofid.gazetteer.tree.ITreeNode;
 
 import java.net.URI;
 import java.util.HashSet;
