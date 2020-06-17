@@ -11,7 +11,6 @@ import org.apache.commons.math3.util.Combinations;
 import org.apache.commons.math3.util.Pair;
 import org.apache.log4j.Logger;
 import org.apache.uima.util.UriUtils;
-import org.biofid.gazetteer.tree.ITreeNode;
 import org.biofid.gazetteer.tree.StringTreeNode;
 import org.texttechnologylab.utilities.helper.FileUtils;
 
@@ -32,13 +31,11 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-
-public class StringTreeGazetteerModel implements ITreeGazetteerModel {
+public class StringGazetteerModel implements IGazetteerModel {
 	
 	public static final Pattern nonTokenCharacterClass = Pattern.compile("[^\\p{Alpha}\\- ]+", Pattern.UNICODE_CHARACTER_CLASS);
-	public final StringTreeNode tree;
 	
-	protected static final Logger logger = Logger.getLogger(StringTreeGazetteerModel.class);
+	protected static final Logger logger = Logger.getLogger(StringGazetteerModel.class);
 	protected static final Path tempPath = Paths.get("/tmp/biofid-gazetteer/");
 	protected static final Path cachePath = Paths.get(System.getenv("HOME"), ".cache/biofid-gazetteer/").toAbsolutePath();
 	protected final ArrayList<String> sourceLocations;
@@ -72,7 +69,7 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 	 * @param pFilterSet
 	 * @throws IOException
 	 */
-	public StringTreeGazetteerModel(
+	public StringGazetteerModel(
 			String[] aSourceLocations,
 			Boolean bUseLowercase,
 			String sLanguage,
@@ -108,13 +105,6 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 		logger.info(String.format("Finished loading %d skip-grams from %d taxa in %dms.",
 				sortedSkipGramSet.size(), taxonUriMap.size(), System.currentTimeMillis() - startTime)
 		);
-		
-		tree = buildTree(bUseLowercase, tokenBoundaryRegex);
-		
-		logger.info(String.format("Finished building tree with %d nodes from %d skip-grams in %dms.",
-				tree.size(), sortedSkipGramSet.size(), System.currentTimeMillis() - startTime
-		));
-		
 	}
 	
 	protected LinkedHashMap<String, HashSet<URI>> buildTaxaUriMap() throws IOException {
@@ -124,8 +114,8 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 		logger.info(String.format("Loading entries from %d files..", sourceLocations.size()));
 		for (int i = 0; i < sourceLocations.size(); i++) {
 			String sourceLocation = sourceLocations.get(i);
-			logger.info(String.format("[%d/%d] Loading file %s", i+1, sourceLocations.size(), sourceLocation));
-			StringTreeGazetteerModel.loadTaxaMap(sourceLocation, useLowercase, language).forEach((taxon, uri) ->
+			logger.info(String.format("[%d/%d] Loading file %s", i + 1, sourceLocations.size(), sourceLocation));
+			TreeGazetteerModel.loadTaxaMap(sourceLocation, useLowercase, language).forEach((taxon, uri) ->
 					lTaxonUriMap.merge(taxon, uri, (uUri, vUri) -> {
 						duplicateKeys.incrementAndGet();
 						return new HashSet<>(SetUtils.union(uUri, vUri));
@@ -142,7 +132,8 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 	protected LinkedHashMap<String, String> buildSkipGramTaxonLookup() {
 		AtomicInteger duplicateKeys = new AtomicInteger(0);
 		final LinkedHashMap<String, String> lSkipGramTaxonLookup = taxonUriMap.keySet().stream()
-				.flatMap(s -> this.getSkipGramsFromTaxon(s).stream().map(val -> new Pair<>(s, val)))
+				.flatMap(s -> getSkipGramsFromTaxon(s, this.addAbbreviatedTaxa, this.minWordCountForSkipGrams, this.getAllSkips, this.splitHyphen)
+						.stream().map(val -> new Pair<>(s, val)))
 				.collect(Collectors.toMap(
 						Pair::getSecond,    // the skip-gram
 						Pair::getFirst,     // the corresponding taxon
@@ -277,8 +268,8 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 	 * necessary.
 	 *
 	 * @return A valid writable Path.
-	 * @throws IOException If neither {@link StringTreeGazetteerModel#cachePath cachePath} nor {@link
-	 *                     StringTreeGazetteerModel#tempPath tempPath} are writable.
+	 * @throws IOException If neither {@link TreeGazetteerModel#cachePath cachePath} nor {@link
+	 *                     TreeGazetteerModel#tempPath tempPath} are writable.
 	 */
 	protected static Path getTaxaLocation() throws IOException {
 		Path gazetteerFolder;
@@ -302,20 +293,24 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 	 * Calls {@link #getSkipGramsFromTaxonAsStream getSkipGramsFromTaxonAsStream(String)} and collects the result in a
 	 * Set.
 	 *
-	 * @param pString the target String.
+	 * @param pString                  the target String.
+	 * @param addAbbreviatedTaxa
+	 * @param minWordCountForSkipGrams
+	 * @param getAllSkips
+	 * @param splitHyphen
 	 * @return a List of Strings.
 	 */
-	protected Set<String> getSkipGramsFromTaxon(String pString) {
-		HashSet<String> basicSkipGrams = getSkipGramsFromTaxonAsStream(pString);
+	public static Set<String> getSkipGramsFromTaxon(String pString, boolean addAbbreviatedTaxa, int minWordCountForSkipGrams, boolean getAllSkips, boolean splitHyphen) {
+		HashSet<String> basicSkipGrams = getSkipGramsFromTaxonAsStream(pString, minWordCountForSkipGrams, getAllSkips, splitHyphen, 5);
 		
 		if (addAbbreviatedTaxa) {
-			ArrayList<String> words = getWords(pString);
+			ArrayList<String> words = getWords(pString, splitHyphen);
 			if (words.size() > 1) {
 				words.set(0, pString.charAt(0) + ".");
 				String abbreviatedString = String.join(" ", words);
 				basicSkipGrams.add(abbreviatedString);
 				if (words.size() > 2) {
-					basicSkipGrams.addAll(getSkipGramsFromTaxonAsStream(abbreviatedString));
+					basicSkipGrams.addAll(getSkipGramsFromTaxonAsStream(abbreviatedString, minWordCountForSkipGrams, getAllSkips, splitHyphen, 5));
 				}
 			}
 		}
@@ -327,12 +322,16 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 	 * string is split by whitespaces and all n over n-1 combinations are computed and added to the list. If there is
 	 * only a single word in the given string, a singleton list with that word is returned.
 	 *
-	 * @param pString the target String.
+	 * @param pString                  the target String.
+	 * @param minWordCountForSkipGrams
+	 * @param getAllSkips
+	 * @param splitHyphen
+	 * @param maxWordCountForSkipGrams
 	 * @return a Stream of Strings.
 	 */
-	protected HashSet<String> getSkipGramsFromTaxonAsStream(String pString) {
-		ArrayList<String> words = getWords(pString);
-		if (words.size() < minWordCountForSkipGrams) {
+	protected static HashSet<String> getSkipGramsFromTaxonAsStream(String pString, int minWordCountForSkipGrams, boolean getAllSkips, boolean splitHyphen, int maxWordCountForSkipGrams) {
+		ArrayList<String> words = getWords(pString, splitHyphen);
+		if (words.size() < minWordCountForSkipGrams | words.size() > maxWordCountForSkipGrams) {
 			return Sets.newHashSet(pString);
 		} else {
 			IntStream combinationRange;
@@ -360,7 +359,7 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 		}
 	}
 	
-	protected ArrayList<String> getWords(String pString) {
+	protected static ArrayList<String> getWords(String pString, boolean splitHyphen) {
 		ArrayList<String> words;
 		if (splitHyphen) {
 			words = Lists.newArrayList(pString.split("[\\s\n\\-]+"));
@@ -404,8 +403,4 @@ public class StringTreeGazetteerModel implements ITreeGazetteerModel {
 		return taxonUriMap;
 	}
 	
-	@Override
-	public ITreeNode getTree() {
-		return this.tree;
-	}
 }

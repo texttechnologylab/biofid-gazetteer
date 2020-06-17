@@ -4,7 +4,7 @@ import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
 import org.apache.uima.cas.Type;
 import org.apache.uima.cas.TypeSystem;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
-import org.biofid.gazetteer.models.StringTreeGazetteerModel;
+import org.biofid.gazetteer.models.TreeGazetteerModel;
 
 import java.io.IOException;
 
@@ -25,7 +25,7 @@ public class SingleClassTreeGazetteer extends BaseTreeGazetteer {
 	
 	protected void createTreeModel() throws IOException, ClassNotFoundException {
 		getLogger().info(String.format("Initializing StringTreeGazetteerModel for %s", Class.forName(pTaggingTypeName).getSimpleName()));
-		stringTreeGazetteerModel = new StringTreeGazetteerModel(
+		stringTreeGazetteerModel = new TreeGazetteerModel(
 				sourceLocation,
 				pUseLowercase,
 				language,

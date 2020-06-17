@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
-public class MultiClassTreeGazetteerModel extends StringTreeGazetteerModel {
+public class MultiClassTreeGazetteerModel extends TreeGazetteerModel {
 	private HashMap<String, Integer> fileLocationSourceMapping;
 	private HashMap<String, Integer> taxonSourceMapping;
 	
@@ -37,7 +37,7 @@ public class MultiClassTreeGazetteerModel extends StringTreeGazetteerModel {
 	
 	@Override
 	protected ArrayList<String> getTaxaFiles(String[] aSourceLocations) throws IOException {
-		fileLocationSourceMapping = new HashMap<>(10,1);
+		fileLocationSourceMapping = new HashMap<>(10, 1);
 		taxonSourceMapping = new HashMap<>();
 		ArrayList<String> fileLocations = new ArrayList<>();
 		for (int i = 0; i < aSourceLocations.length; i++) {
@@ -78,8 +78,8 @@ public class MultiClassTreeGazetteerModel extends StringTreeGazetteerModel {
 		logger.info(String.format("Loading entries from %d files", sourceLocations.size()));
 		for (int i = 0; i < sourceLocations.size(); i++) {
 			String sourceLocation = sourceLocations.get(i);
-			logger.info(String.format("[%d/%d] Loading file %s", i+1, sourceLocations.size(), sourceLocation));
-			StringTreeGazetteerModel.loadTaxaMap(sourceLocation, useLowercase, language).forEach((taxon, uri) ->
+			logger.info(String.format("[%d/%d] Loading file %s", i + 1, sourceLocations.size(), sourceLocation));
+			TreeGazetteerModel.loadTaxaMap(sourceLocation, useLowercase, language).forEach((taxon, uri) ->
 					{
 						lTaxonUriMap.merge(taxon, uri, (uUri, vUri) -> {
 							duplicateKeys.incrementAndGet();

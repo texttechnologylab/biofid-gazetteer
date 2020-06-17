@@ -25,7 +25,7 @@ import org.apache.uima.jcas.JCas;
 import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.biofid.gazetteer.models.ITreeGazetteerModel;
-import org.biofid.gazetteer.models.StringTreeGazetteerModel;
+import org.biofid.gazetteer.models.TreeGazetteerModel;
 import org.biofid.gazetteer.tree.ITreeNode;
 import org.biofid.gazetteer.util.UnicodeRegexSegmenter;
 import org.dkpro.core.api.parameter.ComponentParameters;
@@ -164,7 +164,7 @@ public abstract class BaseTreeGazetteer extends SegmenterBase {
 	
 	protected void createTreeModel() throws IOException, ClassNotFoundException {
 		getLogger().info("Initializing StringTreeGazetteerModel");
-		stringTreeGazetteerModel = new StringTreeGazetteerModel(
+		stringTreeGazetteerModel = new TreeGazetteerModel(
 				sourceLocation,
 				pUseLowercase,
 				language,
@@ -176,7 +176,7 @@ public abstract class BaseTreeGazetteer extends SegmenterBase {
 				tokenBoundaryRegex,
 				getFilterSet()
 		);
-		skipGramTreeRoot = ((ITreeGazetteerModel) stringTreeGazetteerModel).getTree();
+		skipGramTreeRoot = stringTreeGazetteerModel.getTree();
 		skipGramTreeDepth = skipGramTreeRoot.depth();
 	}
 	
