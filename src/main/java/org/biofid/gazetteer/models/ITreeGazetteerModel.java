@@ -1,7 +1,8 @@
 package org.biofid.gazetteer.models;
 
-import org.biofid.gazetteer.search.ITreeNode;
+import org.biofid.gazetteer.tree.ITreeNode;
 
-public interface ITreeGazetteerModel {
-    ITreeNode getTree();
+public interface ITreeGazetteerModel extends IGazetteerModel {
+	
+	ITreeNode getTree();
 }

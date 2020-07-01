@@ -1,4 +1,4 @@
-package org.biofid.gazetteer.search;
+package org.biofid.gazetteer.tree;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
