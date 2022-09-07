@@ -3,6 +3,8 @@
 Skip-Gram Based Taxon Tagger for the [TextImager]() Pipeline
 
 [![BIOfid](http://img.shields.io/badge/project-BIOfid-4C7828.svg)](https://www.biofid.de/en/)
+[![version](https://img.shields.io/github/license/texttechnologylab/biofid-gazetteer)]()
+[![latest](https://img.shields.io/github/v/release/texttechnologylab/biofid-gazetteer)]()
 
 [![Paper 1](http://img.shields.io/badge/paper-ACL_Anthology-B31B1B.svg)](https://aclanthology.org/K19-1081/)
 [![Conference 1](http://img.shields.io/badge/conference-CoNLL_2019-4b44ce.svg)](https://lrec2022.lrec-conf.org/)
